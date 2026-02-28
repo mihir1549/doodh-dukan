@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.env
+.DS_Store
+*.pdf
+extracted_text.txt
+build_errors.txt
