@@ -137,4 +137,42 @@ export class UsersService implements OnModuleInit {
         await this.userRepo.save(user);
         return { message: 'User deactivated' };
     }
+
+    /**
+     * Automatically create or link a user account for a customer
+     */
+    async createForCustomer(tenantId: string, customer: any) {
+        if (!customer.phone) return null;
+
+        const existing = await this.userRepo.findOne({
+            where: { phone: customer.phone },
+        });
+
+        if (existing) {
+            // If user exists and is not already admin/owner, 
+            // link them to this customer and set role
+            if ([UserRole.CUSTOMER, UserRole.DELIVERY].includes(existing.role)) {
+                existing.customer_id = customer.id;
+                existing.role = UserRole.CUSTOMER;
+                return this.userRepo.save(existing);
+            }
+            return existing;
+        }
+
+        // Create new user with default password
+        const defaultPin = '123456';
+        const hashedPin = await bcrypt.hash(defaultPin, 10);
+
+        const user = this.userRepo.create({
+            tenant_id: tenantId,
+            name: customer.name,
+            phone: customer.phone,
+            password_hash: hashedPin,
+            role: UserRole.CUSTOMER,
+            customer_id: customer.id,
+            is_active: true,
+        });
+
+        return this.userRepo.save(user);
+    }
 }

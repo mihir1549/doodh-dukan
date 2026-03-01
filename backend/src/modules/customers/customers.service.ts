@@ -3,12 +3,14 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, ILike, Brackets } from 'typeorm';
 import { Customer } from './customer.entity';
 import { CreateCustomerDto, UpdateCustomerDto } from './dto/customer.dto';
+import { UsersService } from '../users/users.service';
 
 @Injectable()
 export class CustomersService {
     constructor(
         @InjectRepository(Customer)
         private customerRepo: Repository<Customer>,
+        private usersService: UsersService,
     ) { }
 
     async findAll(
@@ -87,7 +89,12 @@ export class CustomersService {
             customer_number: nextNumber,
             ...dto,
         });
-        return this.customerRepo.save(customer);
+        const savedCustomer = await this.customerRepo.save(customer);
+
+        // Auto-create user account
+        await this.usersService.createForCustomer(tenantId, savedCustomer);
+
+        return savedCustomer;
     }
 
     async update(tenantId: string, id: string, dto: UpdateCustomerDto) {
