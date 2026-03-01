@@ -25,7 +25,7 @@ function PublicRoute({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
   if (loading) return <div className="page"><div className="loading"><div className="spinner" /></div></div>;
   // Allow Super Admin to access PublicRoutes (like Register) without being redirected home
-  if (user && user.role !== 'SUPER_ADMIN') return <Navigate to="/" replace />;
+  if (user && user.role?.toUpperCase() !== 'SUPER_ADMIN') return <Navigate to="/" replace />;
   return <div className="app-container">{children}</div>;
 }
 
