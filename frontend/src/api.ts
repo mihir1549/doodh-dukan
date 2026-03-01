@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Auto-detect hostname so API works from phone (same network)
-const API_BASE = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:4000`;
+const API_BASE = import.meta.env.VITE_API_URL || '';
 
 const api = axios.create({
     baseURL: `${API_BASE}/api/v1`,
