@@ -1,23 +1,12 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { entryApi, summaryApi } from '../api';
 import SuperAdminDashboard from './SuperAdminDashboard';
 
-export default function Dashboard() {
+function ShopDashboard() {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
-
-    useEffect(() => {
-        if (user?.role === 'CUSTOMER') {
-            navigate('/card');
-        }
-    }, [user, navigate]);
-
-    if (user?.role === 'SUPER_ADMIN') {
-        return <SuperAdminDashboard />;
-    }
-
     const [todayCount, setTodayCount] = useState(0);
     const [monthTotal, setMonthTotal] = useState(0);
     const [loading, setLoading] = useState(true);
@@ -142,4 +131,20 @@ export default function Dashboard() {
             </div>
         </div>
     );
+}
+
+export default function Dashboard() {
+    const { user, loading } = useAuth();
+
+    if (loading) return <div className="page"><div className="loading"><div className="spinner" /></div></div>;
+
+    if (user?.role === 'SUPER_ADMIN') {
+        return <SuperAdminDashboard />;
+    }
+
+    if (user?.role === 'CUSTOMER') {
+        return <Navigate to="/card" replace />;
+    }
+
+    return <ShopDashboard />;
 }
