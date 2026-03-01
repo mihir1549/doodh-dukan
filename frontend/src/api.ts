@@ -68,6 +68,8 @@ export const userApi = {
         api.post('/users', data),
     update: (id: string, data: any) => api.patch(`/users/${id}`, data),
     deactivate: (id: string) => api.delete(`/users/${id}`),
+    changePassword: (data: { oldPin: string; newPin: string }) =>
+        api.patch('/users/password', data),
 };
 
 // --- Customer APIs ---

@@ -10,8 +10,8 @@ import {
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { UsersService } from './users.service';
-import { CreateUserDto, UpdateUserDto } from './dto/user.dto';
-import { TenantId, Roles } from '../../common/decorators';
+import { CreateUserDto, UpdateUserDto, ChangePasswordDto } from './dto/user.dto';
+import { TenantId, Roles, CurrentUser } from '../../common/decorators';
 import { RolesGuard } from '../../common/guards';
 import { UserRole } from './user.entity';
 
@@ -30,6 +30,14 @@ export class UsersController {
     @Roles(UserRole.OWNER)
     async create(@TenantId() tenantId: string, @Body() dto: CreateUserDto) {
         return this.usersService.create(tenantId, dto);
+    }
+
+    @Patch('password')
+    async changePassword(
+        @CurrentUser() user: any,
+        @Body() dto: ChangePasswordDto,
+    ) {
+        return this.usersService.changePassword(user.userId, dto);
     }
 
     @Patch(':id')

@@ -10,7 +10,7 @@ import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { User, UserRole } from './user.entity';
 import { Tenant } from '../tenants/tenant.entity';
-import { CreateUserDto, UpdateUserDto } from './dto/user.dto';
+import { CreateUserDto, UpdateUserDto, ChangePasswordDto } from './dto/user.dto';
 
 @Injectable()
 export class UsersService implements OnModuleInit {
@@ -146,6 +146,21 @@ export class UsersService implements OnModuleInit {
         user.is_active = false;
         await this.userRepo.save(user);
         return { message: 'User deactivated' };
+    }
+
+    async changePassword(userId: string, dto: ChangePasswordDto) {
+        const user = await this.userRepo.findOne({ where: { id: userId } });
+        if (!user) throw new NotFoundException('User not found');
+
+        const isMatch = await bcrypt.compare(dto.oldPin, user.password_hash);
+        if (!isMatch) {
+            throw new ForbiddenException('Incorrect old PIN');
+        }
+
+        user.password_hash = await bcrypt.hash(dto.newPin, 10);
+        await this.userRepo.save(user);
+
+        return { message: 'Password changed successfully' };
     }
 
     /**

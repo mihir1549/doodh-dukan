@@ -46,3 +46,14 @@ export class UpdateUserDto {
     @IsOptional()
     customer_id?: string;
 }
+
+export class ChangePasswordDto {
+    @IsString()
+    @IsNotEmpty()
+    oldPin: string;
+
+    @IsString()
+    @IsNotEmpty()
+    @Length(4, 32)
+    newPin: string;
+}

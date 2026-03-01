@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../AuthContext';
-import { entryApi, summaryApi } from '../api';
+import { entryApi, summaryApi, userApi } from '../api';
 
 export default function MilkCard() {
     const { user, logout } = useAuth();
@@ -8,6 +8,10 @@ export default function MilkCard() {
     const [entries, setEntries] = useState<any[]>([]);
     const [summary, setSummary] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+
+    const [showSettings, setShowSettings] = useState(false);
+    const [pinData, setPinData] = useState({ oldPin: '', newPin: '' });
+    const [pinStatus, setPinStatus] = useState({ loading: false, error: '', success: '' });
 
     useEffect(() => {
         if (user?.customer_id) {
@@ -40,13 +44,30 @@ export default function MilkCard() {
     const daysCount = getDaysInMonth(month);
     const dayRows = Array.from({ length: daysCount }, (_, i) => i + 1);
 
-    // Group entries by day and slot
+    // Group entries by day
     const entriesByDay = entries.reduce((acc: any, entry: any) => {
         const day = new Date(entry.entry_date).getDate();
-        if (!acc[day]) acc[day] = { MORNING: [], EVENING: [], EXTRA: [] };
-        acc[day][entry.entry_slot].push(entry);
+        if (!acc[day]) acc[day] = [];
+        acc[day].push(entry);
         return acc;
     }, {});
+
+    const handleChangePassword = async () => {
+        if (pinData.oldPin.length < 4 || pinData.newPin.length < 4) {
+            setPinStatus({ loading: false, error: 'PIN must be at least 4 digits', success: '' });
+            return;
+        }
+        setPinStatus({ loading: true, error: '', success: '' });
+        try {
+            await userApi.changePassword(pinData);
+            setPinStatus({ loading: false, error: '', success: 'Password changed successfully! Please login again.' });
+            setTimeout(() => {
+                logout();
+            }, 2000);
+        } catch (err: any) {
+            setPinStatus({ loading: false, error: err.response?.data?.message || 'Failed to change password', success: '' });
+        }
+    };
 
     return (
         <div className="page" style={{ padding: '16px', maxWidth: '600px', margin: '0 auto' }}>
@@ -55,12 +76,20 @@ export default function MilkCard() {
                     <h1 style={{ fontSize: '1.5rem', margin: 0 }}>My Milk Card</h1>
                     <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{user?.shop_name}</p>
                 </div>
-                <button
-                    onClick={logout}
-                    style={{ background: 'var(--danger-light)', color: 'var(--danger)', border: 'none', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}
-                >
-                    Logout
-                </button>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                        onClick={() => setShowSettings(true)}
+                        style={{ background: 'var(--bg-card)', color: 'var(--text-primary)', border: '1px solid var(--border)', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}
+                    >
+                        ⚙️ <span className="hide-mobile">Profile</span>
+                    </button>
+                    <button
+                        onClick={logout}
+                        style={{ background: 'var(--danger-light)', color: 'var(--danger)', border: 'none', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}
+                    >
+                        Logout
+                    </button>
+                </div>
             </div>
 
             {/* Month Selector */}
@@ -100,44 +129,94 @@ export default function MilkCard() {
             ) : (
                 <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', overflow: 'hidden' }}>
                     <div style={{
-                        display: 'grid', gridTemplateColumns: '50px 1fr 1fr 1fr',
+                        display: 'grid', gridTemplateColumns: '60px 1fr 80px',
                         padding: '12px', background: 'var(--bg-page)', borderBottom: '2px solid var(--border)',
-                        fontWeight: 700, fontSize: '0.8rem', textAlign: 'center', color: 'var(--text-secondary)'
+                        fontWeight: 700, fontSize: '0.8rem', textAlign: 'left', color: 'var(--text-secondary)'
                     }}>
-                        <div>DATE</div>
-                        <div>MORNING</div>
-                        <div>EVENING</div>
-                        <div>EXTRA</div>
+                        <div style={{ textAlign: 'center' }}>DATE</div>
+                        <div>DETAILS</div>
+                        <div style={{ textAlign: 'right' }}>TIME</div>
                     </div>
 
                     <div style={{ maxHeight: '60vh', overflowY: 'auto' }}>
                         {dayRows.map(day => {
-                            const dayEntries = entriesByDay[day] || { MORNING: [], EVENING: [], EXTRA: [] };
-                            const hasMilk = dayEntries.MORNING.length > 0 || dayEntries.EVENING.length > 0 || dayEntries.EXTRA.length > 0;
+                            const dayEntries = entriesByDay[day] || [];
+                            const hasMilk = dayEntries.length > 0;
 
                             return (
                                 <div key={day} style={{
-                                    display: 'grid', gridTemplateColumns: '50px 1fr 1fr 1fr',
+                                    display: 'grid', gridTemplateColumns: '60px 1fr 80px',
                                     padding: '12px', borderBottom: '1px solid var(--border)',
-                                    textAlign: 'center', fontSize: '1rem',
+                                    alignItems: 'center', fontSize: '1rem',
                                     background: hasMilk ? 'transparent' : 'rgba(239, 68, 68, 0.05)'
                                 }}>
-                                    <div style={{ fontWeight: 700, color: 'var(--text-muted)' }}>{day}</div>
+                                    <div style={{ fontWeight: 700, color: 'var(--text-muted)', textAlign: 'center' }}>{day}</div>
 
-                                    <div style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
-                                        {dayEntries.MORNING.map((e: any) => e.quantity).join(' + ') || (hasMilk ? '-' : <span style={{ color: 'var(--danger)', fontSize: '0.7rem' }}>✕</span>)}
+                                    <div style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.9rem' }}>
+                                        {hasMilk ? (
+                                            dayEntries.map((e: any) => `${e.quantity} ${e.product?.name || 'Item'}`).join(', ')
+                                        ) : (
+                                            <span style={{ color: 'var(--danger)', fontSize: '0.75rem' }}>✕</span>
+                                        )}
                                     </div>
 
-                                    <div style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
-                                        {dayEntries.EVENING.map((e: any) => e.quantity).join(' + ') || (hasMilk ? '-' : <span style={{ color: 'var(--danger)', fontSize: '0.7rem' }}>✕</span>)}
-                                    </div>
-
-                                    <div style={{ color: 'var(--accent)', fontWeight: 600 }}>
-                                        {dayEntries.EXTRA.map((e: any) => e.quantity).join(' + ') || '-'}
+                                    <div style={{ color: 'var(--text-muted)', fontWeight: 500, fontSize: '0.75rem', textAlign: 'right' }}>
+                                        {hasMilk ? (
+                                            new Date(dayEntries[dayEntries.length - 1].created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
+                                        ) : '-'}
                                     </div>
                                 </div>
                             );
                         })}
+                    </div>
+                </div>
+            )}
+
+            {/* Settings / Password Modal */}
+            {showSettings && (
+                <div className="modal-backdrop" onClick={() => setShowSettings(false)}>
+                    <div className="modal-content" onClick={e => e.stopPropagation()}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                            <h2 style={{ fontSize: '1.2rem', margin: 0 }}>⚙️ Security Settings</h2>
+                            <button className="icon-btn" onClick={() => setShowSettings(false)}>×</button>
+                        </div>
+
+                        <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>
+                            Update your 6-digit PIN used for login.
+                        </p>
+
+                        <div className="form-group">
+                            <label>Current PIN</label>
+                            <input
+                                type="password"
+                                inputMode="numeric"
+                                value={pinData.oldPin}
+                                onChange={e => setPinData({ ...pinData, oldPin: e.target.value.replace(/\D/g, '').slice(0, 6) })}
+                                placeholder="Enter current PIN"
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label>New PIN</label>
+                            <input
+                                type="password"
+                                inputMode="numeric"
+                                value={pinData.newPin}
+                                onChange={e => setPinData({ ...pinData, newPin: e.target.value.replace(/\D/g, '').slice(0, 6) })}
+                                placeholder="Enter new 6-digit PIN"
+                            />
+                        </div>
+
+                        {pinStatus.error && <div className="error-msg">{pinStatus.error}</div>}
+                        {pinStatus.success && <div style={{ color: 'var(--success)', fontSize: '0.9rem', marginBottom: '16px', fontWeight: 600 }}>{pinStatus.success}</div>}
+
+                        <button
+                            className="btn btn-primary btn-full"
+                            onClick={handleChangePassword}
+                            disabled={pinStatus.loading || pinStatus.success !== ''}
+                        >
+                            {pinStatus.loading ? 'Updating...' : 'Change PIN'}
+                        </button>
                     </div>
                 </div>
             )}
