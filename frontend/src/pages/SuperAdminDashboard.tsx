@@ -32,17 +32,17 @@ export default function SuperAdminDashboard() {
 
     return (
         <div className="page">
-            <div className="page-header" style={{ background: '#7f1d1d', padding: '16px', borderRadius: '12px', marginBottom: '24px', border: '2px solid #ef4444' }}>
+            <div className="page-header">
                 <div>
-                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#fca5a5', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>
-                        Management Portal (EMERGENCY FIX v2.4)
+                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>
+                        Management Portal
                     </div>
-                    <h1 style={{ color: '#fff', fontSize: '1.8rem' }}>🛠️ Platform Admin (v2.4)</h1>
-                    <p style={{ fontSize: '0.9rem', color: '#fca5a5', marginTop: '4px', fontWeight: 600 }}>
-                        If you see RED, the update is LIVE!
+                    <h1>🛠️ Platform Admin</h1>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                        Global Shop Monitor & Governance
                     </p>
                 </div>
-                <button className="back-btn" onClick={logout} style={{ border: '2px solid #ef4444' }}>Logout</button>
+                <button className="back-btn" onClick={logout}>Logout</button>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '24px' }}>
@@ -67,12 +67,12 @@ export default function SuperAdminDashboard() {
                     </div>
                 </button>
 
-                <button className="quick-action-btn" onClick={() => navigate('/portal/registration')} style={{ border: '2px solid var(--accent)', background: 'var(--accent-light)' }}>
+                <button className="quick-action-btn" onClick={() => navigate('/portal/registration')}>
                     <div className="quick-action-icon">➕</div>
                     <div>
-                        <div style={{ fontWeight: 800 }}>OPEN SHOP REGISTRATION (v2.4)</div>
+                        <div>Register New Shop</div>
                         <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 400 }}>
-                            Direct bypass to shop creation form
+                            Direct link to shop creation portal
                         </div>
                     </div>
                 </button>

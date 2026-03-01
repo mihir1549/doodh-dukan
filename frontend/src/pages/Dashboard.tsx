@@ -49,7 +49,7 @@ function ShopDashboard() {
         <div className="page">
             <div className="page-header">
                 <div>
-                    <h1>🥛 {user?.shop_name || 'Doodh Dukan'} (v2.1)</h1>
+                    <h1>🥛 {user?.shop_name || 'Doodh Dukan'}</h1>
                     <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
                         Welcome, {user?.name} <span className="badge badge-role">{user?.role}</span>
                     </p>
