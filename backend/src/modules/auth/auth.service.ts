@@ -29,7 +29,8 @@ export class AuthService {
             throw new UnauthorizedException('Invalid phone number or PIN');
         }
 
-        if (!user.tenant?.is_active) {
+        // Skipping tenant check for SUPER_ADMIN
+        if (user.role !== 'SUPER_ADMIN' && !user.tenant?.is_active) {
             throw new UnauthorizedException('Your shop account is deactivated');
         }
 
