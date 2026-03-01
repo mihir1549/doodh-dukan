@@ -17,6 +17,7 @@ export default function Dashboard() {
     if (user?.role === 'SUPER_ADMIN') {
         return <SuperAdminDashboard />;
     }
+
     const [todayCount, setTodayCount] = useState(0);
     const [monthTotal, setMonthTotal] = useState(0);
     const [loading, setLoading] = useState(true);

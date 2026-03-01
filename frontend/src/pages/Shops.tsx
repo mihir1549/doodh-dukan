@@ -17,7 +17,7 @@ export default function Shops() {
         setLoading(true);
         try {
             const res = await tenantApi.list();
-            setShops(res.data || []);
+            setShops(res.data.data || []);
         } catch (error) {
             console.error('Failed to load shops:', error);
         } finally {

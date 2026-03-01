@@ -16,7 +16,7 @@ export default function SuperAdminDashboard() {
     const loadStats = async () => {
         try {
             const res = await tenantApi.list();
-            const shops = res.data || [];
+            const shops = res.data.data || [];
             setStats({
                 total: shops.length,
                 active: shops.filter((s: any) => s.is_active).length
