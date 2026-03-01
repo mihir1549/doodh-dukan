@@ -110,20 +110,22 @@ export default function Login() {
                     ))}
                     <button className="numpad-btn" onClick={handleBackspace}>⌫</button>
                     <button className="numpad-btn" onClick={() => handleNumpad('0')}>0</button>
+                    <button className="numpad-btn" style={{ visibility: 'hidden' }}></button>
+                </div>
+            )}
+
+            {!loading && step === 'phone' && (
+                <div style={{ width: '100%', maxWidth: '320px', margin: '24px auto 0' }}>
                     <button
-                        className="numpad-btn"
-                        style={step === 'phone'
-                            ? { background: 'var(--accent)', color: 'white', borderColor: 'var(--accent)' }
-                            : { visibility: 'hidden' }
-                        }
-                        onClick={step === 'phone' ? handlePhoneSubmit : undefined}
+                        className="btn btn-primary btn-full"
+                        onClick={handlePhoneSubmit}
                     >
-                        →
+                        Continue
                     </button>
                 </div>
             )}
 
-            <div style={{ marginTop: '20px', textAlign: 'center' }}>
+            <div style={{ marginTop: '32px', textAlign: 'center' }}>
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
                     Contact admin for new shop registration
                 </p>
