@@ -12,6 +12,10 @@ export default function CustomerDetail() {
     const [summary, setSummary] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
+    const [isEditing, setIsEditing] = useState(false);
+    const [editForm, setEditForm] = useState({ name: '', phone: '', address: '' });
+    const [saving, setSaving] = useState(false);
+
     const now = new Date();
     const initialMonth = searchParams.get('month') || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     const [monthYear, setMonthYear] = useState(initialMonth);
@@ -37,6 +41,11 @@ export default function CustomerDetail() {
             const sums = summRes.data?.data || [];
             setSummary(sums.length > 0 ? sums[0] : null);
             setEntries(entriesRes.data?.data || []);
+            setEditForm({
+                name: custRes.data?.data?.name || '',
+                phone: custRes.data?.data?.phone || '',
+                address: custRes.data?.data?.address || ''
+            });
         } catch {
             setCustomer(null);
         } finally {
@@ -50,6 +59,21 @@ export default function CustomerDetail() {
         if (m > 12) { m = 1; y++; }
         if (m < 1) { m = 12; y--; }
         setMonthYear(`${y}-${String(m).padStart(2, '0')}`);
+    };
+
+    const handleEditSave = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setSaving(true);
+        try {
+            await customerApi.update(id!, editForm);
+            setIsEditing(false);
+            loadData();
+        } catch (err) {
+            console.error('Failed to update customer', err);
+            alert('Failed to update customer details');
+        } finally {
+            setSaving(false);
+        }
     };
 
     // Build product-wise breakdown from entries
@@ -97,7 +121,7 @@ export default function CustomerDetail() {
             </div>
 
             {/* Customer Info Card */}
-            <div className="card" style={{ marginBottom: '20px' }}>
+            <div className="card" style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                     <div className="customer-avatar" style={{ width: '56px', height: '56px', fontSize: '1.4rem' }}>
                         {customer.name?.charAt(0)?.toUpperCase()}
@@ -108,7 +132,56 @@ export default function CustomerDetail() {
                         {customer.address && <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{customer.address}</div>}
                     </div>
                 </div>
+                <button
+                    onClick={() => setIsEditing(true)}
+                    style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: '1.5rem', padding: '8px' }}
+                >
+                    ✏️
+                </button>
             </div>
+
+            {/* Edit Profile Modal */}
+            {isEditing && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+                    <div className="card" style={{ width: '100%', maxWidth: '400px', padding: '24px' }}>
+                        <h2 style={{ marginBottom: '20px' }}>Edit Profile</h2>
+                        <form onSubmit={handleEditSave}>
+                            <div className="form-group">
+                                <label>Name</label>
+                                <input
+                                    required
+                                    value={editForm.name}
+                                    onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>Mobile No.</label>
+                                <input
+                                    type="tel"
+                                    value={editForm.phone}
+                                    onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
+                                    placeholder="Optional"
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>Address</label>
+                                <textarea
+                                    value={editForm.address}
+                                    onChange={e => setEditForm({ ...editForm, address: e.target.value })}
+                                    placeholder="Optional"
+                                    rows={2}
+                                />
+                            </div>
+                            <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+                                <button type="button" className="btn btn-outline" style={{ flex: 1 }} onClick={() => setIsEditing(false)}>Cancel</button>
+                                <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={saving}>
+                                    {saving ? 'Saving...' : 'Save'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
 
             {/* Month Picker */}
             <div className="month-picker">
