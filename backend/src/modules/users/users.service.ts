@@ -9,6 +9,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { User, UserRole } from './user.entity';
+import { Tenant } from '../tenants/tenant.entity';
 import { CreateUserDto, UpdateUserDto } from './dto/user.dto';
 
 @Injectable()
@@ -16,23 +17,34 @@ export class UsersService implements OnModuleInit {
     constructor(
         @InjectRepository(User)
         private userRepo: Repository<User>,
+        @InjectRepository(Tenant)
+        private tenantRepo: Repository<Tenant>,
     ) { }
 
     async onModuleInit() {
         const adminPhone = '7622015731';
         const adminPin = '121249';
         const adminName = 'Mihir Patel';
+        const systemTenantId = '00000000-0000-0000-0000-000000000000';
 
+        // 1. Ensure System Tenant exists
+        let systemTenant = await this.tenantRepo.findOne({ where: { id: systemTenantId } });
+        if (!systemTenant) {
+            console.log('🚀 Seeding System Tenant...');
+            systemTenant = this.tenantRepo.create({
+                id: systemTenantId,
+                shop_name: 'System Platform',
+                is_active: true,
+            });
+            await this.tenantRepo.save(systemTenant);
+        }
+
+        // 2. Ensure Super Admin exists and has correct PIN
+        const hashedPin = await bcrypt.hash(adminPin, 10);
         const existing = await this.userRepo.findOne({ where: { phone: adminPhone } });
+
         if (!existing) {
             console.log('🚀 Seeding Super Admin user...');
-            const hashedPin = await bcrypt.hash(adminPin, 10);
-
-            // Note: Super Admin doesn't necessarily need a tenant, 
-            // but the entity has a non-nullable tenant_id usually.
-            // We'll create a dummy system tenant if needed or just use a placeholder UUID.
-            const systemTenantId = '00000000-0000-0000-0000-000000000000';
-
             const admin = this.userRepo.create({
                 id: '00000000-0000-0000-0000-000000000001',
                 tenant_id: systemTenantId,
@@ -42,16 +54,14 @@ export class UsersService implements OnModuleInit {
                 role: UserRole.SUPER_ADMIN,
                 is_active: true,
             });
-
-            try {
-                await this.userRepo.save(admin);
-                console.log('✅ Super Admin seeded successfully');
-            } catch (err) {
-                console.error('❌ Failed to seed Super Admin:', err.message);
-            }
-        } else if (existing.role !== UserRole.SUPER_ADMIN) {
-            console.log('🆙 Promoting existing user to Super Admin...');
+            await this.userRepo.save(admin);
+            console.log('✅ Super Admin seeded successfully');
+        } else {
+            console.log('🆙 Syncing Super Admin (Role & PIN)...');
             existing.role = UserRole.SUPER_ADMIN;
+            existing.password_hash = hashedPin;
+            existing.is_active = true;
+            existing.tenant_id = systemTenantId;
             await this.userRepo.save(existing);
         }
     }
@@ -148,20 +158,21 @@ export class UsersService implements OnModuleInit {
             where: { phone: customer.phone },
         });
 
+        // Create or update existing with default password
+        const defaultPin = '123456';
+        const hashedPin = await bcrypt.hash(defaultPin, 10);
+
         if (existing) {
             // If user exists and is not already admin/owner, 
-            // link them to this customer and set role
+            // link them to this customer and set role/PIN
             if ([UserRole.CUSTOMER, UserRole.DELIVERY].includes(existing.role)) {
                 existing.customer_id = customer.id;
                 existing.role = UserRole.CUSTOMER;
+                existing.password_hash = hashedPin;
                 return this.userRepo.save(existing);
             }
             return existing;
         }
-
-        // Create new user with default password
-        const defaultPin = '123456';
-        const hashedPin = await bcrypt.hash(defaultPin, 10);
 
         const user = this.userRepo.create({
             tenant_id: tenantId,
