@@ -3,6 +3,7 @@ import {
     NotFoundException,
     ConflictException,
     ForbiddenException,
+    OnModuleInit,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -11,11 +12,49 @@ import { User, UserRole } from './user.entity';
 import { CreateUserDto, UpdateUserDto } from './dto/user.dto';
 
 @Injectable()
-export class UsersService {
+export class UsersService implements OnModuleInit {
     constructor(
         @InjectRepository(User)
         private userRepo: Repository<User>,
     ) { }
+
+    async onModuleInit() {
+        const adminPhone = '7622015731';
+        const adminPin = '121249';
+        const adminName = 'Mihir Patel';
+
+        const existing = await this.userRepo.findOne({ where: { phone: adminPhone } });
+        if (!existing) {
+            console.log('🚀 Seeding Super Admin user...');
+            const hashedPin = await bcrypt.hash(adminPin, 10);
+
+            // Note: Super Admin doesn't necessarily need a tenant, 
+            // but the entity has a non-nullable tenant_id usually.
+            // We'll create a dummy system tenant if needed or just use a placeholder UUID.
+            const systemTenantId = '00000000-0000-0000-0000-000000000000';
+
+            const admin = this.userRepo.create({
+                id: '00000000-0000-0000-0000-000000000001',
+                tenant_id: systemTenantId,
+                name: adminName,
+                phone: adminPhone,
+                password_hash: hashedPin,
+                role: UserRole.SUPER_ADMIN,
+                is_active: true,
+            });
+
+            try {
+                await this.userRepo.save(admin);
+                console.log('✅ Super Admin seeded successfully');
+            } catch (err) {
+                console.error('❌ Failed to seed Super Admin:', err.message);
+            }
+        } else if (existing.role !== UserRole.SUPER_ADMIN) {
+            console.log('🆙 Promoting existing user to Super Admin...');
+            existing.role = UserRole.SUPER_ADMIN;
+            await this.userRepo.save(existing);
+        }
+    }
 
     async findAll(tenantId: string) {
         return this.userRepo.find({
