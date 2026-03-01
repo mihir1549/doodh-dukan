@@ -5,6 +5,7 @@ import {
     Param,
     Query,
     UseGuards,
+    ForbiddenException,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { SummariesService } from './summaries.service';
@@ -18,13 +19,22 @@ export class SummariesController {
     constructor(private summariesService: SummariesService) { }
 
     @Get()
-    @Roles(UserRole.OWNER, UserRole.SHOP_STAFF)
+    @Roles(UserRole.OWNER, UserRole.SHOP_STAFF, UserRole.CUSTOMER)
     async findByMonth(
         @TenantId() tenantId: string,
+        @CurrentUser() user: any,
         @Query('month') month: string,
         @Query('customer_id') customerId?: string,
     ) {
-        return this.summariesService.findByMonth(tenantId, month, customerId);
+        let targetCustomerId = customerId;
+        if (user.role === UserRole.CUSTOMER) {
+            if (!user.customerId) {
+                throw new ForbiddenException('User is not linked to any customer');
+            }
+            targetCustomerId = user.customerId;
+        }
+
+        return this.summariesService.findByMonth(tenantId, month, targetCustomerId);
     }
 
     @Post(':id/lock')
