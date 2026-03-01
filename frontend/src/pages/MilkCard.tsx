@@ -129,12 +129,13 @@ export default function MilkCard() {
             ) : (
                 <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', overflow: 'hidden' }}>
                     <div style={{
-                        display: 'grid', gridTemplateColumns: '60px 1fr 80px',
+                        display: 'grid', gridTemplateColumns: '50px 1fr 60px 70px',
                         padding: '12px', background: 'var(--bg-page)', borderBottom: '2px solid var(--border)',
                         fontWeight: 700, fontSize: '0.8rem', textAlign: 'left', color: 'var(--text-secondary)'
                     }}>
                         <div style={{ textAlign: 'center' }}>DATE</div>
                         <div>DETAILS</div>
+                        <div style={{ textAlign: 'center' }}>BY</div>
                         <div style={{ textAlign: 'right' }}>TIME</div>
                     </div>
 
@@ -143,9 +144,33 @@ export default function MilkCard() {
                             const dayEntries = entriesByDay[day] || [];
                             const hasMilk = dayEntries.length > 0;
 
+                            // Aggregate products by ID
+                            const productTotals: Record<string, { qty: number; name: string; category: string }> = {};
+                            dayEntries.forEach((e: any) => {
+                                const pid = e.product?.id || 'unknown';
+                                if (!productTotals[pid]) {
+                                    productTotals[pid] = { qty: 0, name: e.product?.name || 'Item', category: e.product?.category || '' };
+                                }
+                                productTotals[pid].qty += Number(e.quantity);
+                            });
+
+                            const detailsStr = Object.values(productTotals).map(p => {
+                                const qtyNum = Number(p.qty);
+                                const isLoose = p.name.toLowerCase().includes('loose') || p.category === 'LOOSE_MILK';
+                                if (isLoose) {
+                                    return `${qtyNum.toFixed(1)}L`;
+                                } else {
+                                    return `${qtyNum}${p.name.split(' ')[0]}`;
+                                }
+                            }).join(', ');
+
+                            const createdBy = hasMilk && dayEntries[dayEntries.length - 1].entered_by_user?.name
+                                ? dayEntries[dayEntries.length - 1].entered_by_user.name.split(' ')[0]
+                                : '-';
+
                             return (
                                 <div key={day} style={{
-                                    display: 'grid', gridTemplateColumns: '60px 1fr 80px',
+                                    display: 'grid', gridTemplateColumns: '50px 1fr 60px 70px',
                                     padding: '12px', borderBottom: '1px solid var(--border)',
                                     alignItems: 'center', fontSize: '1rem',
                                     background: hasMilk ? 'transparent' : 'rgba(239, 68, 68, 0.05)'
@@ -153,11 +178,11 @@ export default function MilkCard() {
                                     <div style={{ fontWeight: 700, color: 'var(--text-muted)', textAlign: 'center' }}>{day}</div>
 
                                     <div style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.9rem' }}>
-                                        {hasMilk ? (
-                                            dayEntries.map((e: any) => `${e.quantity} ${e.product?.name || 'Item'}`).join(', ')
-                                        ) : (
-                                            <span style={{ color: 'var(--danger)', fontSize: '0.75rem' }}>✕</span>
-                                        )}
+                                        {hasMilk ? detailsStr : <span style={{ color: 'var(--danger)', fontSize: '0.75rem' }}>✕</span>}
+                                    </div>
+
+                                    <div style={{ color: 'var(--text-muted)', fontWeight: 500, fontSize: '0.75rem', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                        {createdBy}
                                     </div>
 
                                     <div style={{ color: 'var(--text-muted)', fontWeight: 500, fontSize: '0.75rem', textAlign: 'right' }}>
@@ -170,6 +195,7 @@ export default function MilkCard() {
                         })}
                     </div>
                 </div>
+
             )}
 
             {/* Settings / Password Modal */}
