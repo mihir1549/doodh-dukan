@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { entryApi, summaryApi } from '../api';
+import SuperAdminDashboard from './SuperAdminDashboard';
 
 export default function Dashboard() {
     const { user, logout } = useAuth();
@@ -12,6 +13,10 @@ export default function Dashboard() {
             navigate('/card');
         }
     }, [user, navigate]);
+
+    if (user?.role === 'SUPER_ADMIN') {
+        return <SuperAdminDashboard />;
+    }
     const [todayCount, setTodayCount] = useState(0);
     const [monthTotal, setMonthTotal] = useState(0);
     const [loading, setLoading] = useState(true);

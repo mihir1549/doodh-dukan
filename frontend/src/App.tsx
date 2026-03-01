@@ -11,6 +11,7 @@ import Customers from './pages/Customers';
 import Settings from './pages/Settings';
 import Register from './pages/Register';
 import MilkCard from './pages/MilkCard';
+import Shops from './pages/Shops';
 import './index.css';
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
@@ -40,6 +41,7 @@ function AppRoutes() {
       <Route path="/customers/:id" element={<ProtectedRoute><CustomerDetail /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
       <Route path="/card" element={<ProtectedRoute><MilkCard /></ProtectedRoute>} />
+      <Route path="/shops" element={<ProtectedRoute><Shops /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

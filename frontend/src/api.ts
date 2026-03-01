@@ -40,6 +40,15 @@ export const authApi = {
 };
 
 // --- Tenant APIs ---
+export interface Tenant {
+    id: string;
+    shop_name: string;
+    phone: string;
+    address: string;
+    is_active: boolean;
+    created_at: string;
+}
+
 export const tenantApi = {
     register: (data: {
         shop_name: string;
@@ -48,6 +57,8 @@ export const tenantApi = {
         pin: string;
         address?: string;
     }) => api.post('/tenants', data),
+    list: () => api.get('/tenants'),
+    toggleStatus: (id: string) => api.post(`/tenants/${id}/toggle-status`, { id }),
 };
 
 // --- User APIs ---

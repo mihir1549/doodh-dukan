@@ -71,6 +71,15 @@ export class TenantsService {
     }
 
     async findAll() {
-        return this.tenantRepo.find({ where: { is_active: true } });
+        return this.tenantRepo.find({
+            order: { shop_name: 'ASC' }
+        });
+    }
+
+    async toggleStatus(id: string) {
+        const tenant = await this.tenantRepo.findOne({ where: { id } });
+        if (!tenant) throw new ConflictException('Shop not found');
+        tenant.is_active = !tenant.is_active;
+        return this.tenantRepo.save(tenant);
     }
 }
