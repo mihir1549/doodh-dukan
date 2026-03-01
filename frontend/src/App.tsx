@@ -23,9 +23,10 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
 
 function PublicRoute({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
-  if (loading) return <div className="page"><div className="loading"><div className="spinner" /></div></div>;
-  // Allow Super Admin to access PublicRoutes (like Register) without being redirected home
-  if (user && user.role?.toUpperCase() !== 'SUPER_ADMIN') return <Navigate to="/" replace />;
+  if (loading) return null;
+  // If Super Admin, let them see EVERYTHING (no redirection)
+  if (user?.role?.toUpperCase() === 'SUPER_ADMIN') return <div className="app-container">{children}</div>;
+  if (user) return <Navigate to="/" replace />;
   return <div className="app-container">{children}</div>;
 }
 
@@ -34,7 +35,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
       <Route path="/register" element={<Register />} />
-      <Route path="/registration-portal" element={<Register />} />
+      <Route path="/portal/registration" element={<Register />} />
       <Route path="/test" element={<div className="page"><h1>Test Page</h1><button className="btn" onClick={() => window.history.back()}>Back</button></div>} />
       <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/add-entry" element={<ProtectedRoute><AddEntry /></ProtectedRoute>} />
