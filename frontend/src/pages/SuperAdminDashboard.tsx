@@ -34,9 +34,12 @@ export default function SuperAdminDashboard() {
         <div className="page">
             <div className="page-header">
                 <div>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>
+                        Management Portal
+                    </div>
                     <h1>🛠️ Platform Admin</h1>
                     <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                        Global Management Monitor
+                        Global Shop Monitor & Governance
                     </p>
                 </div>
                 <button className="back-btn" onClick={logout}>Logout</button>
