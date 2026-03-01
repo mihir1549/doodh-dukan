@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { type ReactNode } from 'react';
 import { AuthProvider, useAuth } from './AuthContext';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -11,14 +12,14 @@ import Settings from './pages/Settings';
 import Register from './pages/Register';
 import './index.css';
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
+function ProtectedRoute({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
   if (loading) return <div className="page"><div className="loading"><div className="spinner" /></div></div>;
   if (!user) return <Navigate to="/login" replace />;
   return <div className="app-container">{children}</div>;
 }
 
-function PublicRoute({ children }: { children: React.ReactNode }) {
+function PublicRoute({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
   if (loading) return <div className="page"><div className="loading"><div className="spinner" /></div></div>;
   if (user) return <Navigate to="/" replace />;
