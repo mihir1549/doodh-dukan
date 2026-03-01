@@ -85,13 +85,13 @@ export default function Login() {
                     <p style={{ fontWeight: 700, marginBottom: '4px' }}>{phone}</p>
                     <button
                         onClick={() => { setStep('phone'); setPin(''); setError(''); }}
-                        style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: '0.85rem', marginBottom: '8px' }}
+                        style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: '0.9rem', marginBottom: '24px' }}
                     >
                         Change number
                     </button>
-                    <div className="pin-dots">
+                    <div className="pin-dots" style={{ margin: '16px 0 24px 0' }}>
                         {[0, 1, 2, 3, 4, 5].map((i) => (
-                            <div key={i} className={`pin-dot ${i < pin.length ? 'filled' : ''}`} />
+                            <div key={i} className={`pin-dot ${i < pin.length ? 'filled' : ''}`} style={{ transform: 'scale(1.2)', margin: '0 4px' }} />
                         ))}
                     </div>
                 </>
@@ -102,7 +102,7 @@ export default function Login() {
             {loading ? (
                 <div className="loading"><div className="spinner" /></div>
             ) : (
-                <div className="numpad" style={{ marginTop: '16px' }}>
+                <div className="numpad" style={{ marginTop: '32px', marginBottom: '16px' }}>
                     {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((d) => (
                         <button key={d} className="numpad-btn" onClick={() => handleNumpad(d)}>
                             {d}
@@ -115,10 +115,11 @@ export default function Login() {
             )}
 
             {!loading && step === 'phone' && (
-                <div style={{ width: '100%', maxWidth: '320px', margin: '24px auto 0' }}>
+                <div style={{ width: '100%', maxWidth: '320px', marginTop: '32px' }}>
                     <button
                         className="btn btn-primary btn-full"
                         onClick={handlePhoneSubmit}
+                        style={{ padding: '16px', fontSize: '1.1rem' }}
                     >
                         Continue
                     </button>
