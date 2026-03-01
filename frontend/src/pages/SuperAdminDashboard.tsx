@@ -37,7 +37,7 @@ export default function SuperAdminDashboard() {
                     <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>
                         Management Portal
                     </div>
-                    <h1>🛠️ Platform Admin</h1>
+                    <h1>🛠️ Platform Admin (v2.1)</h1>
                     <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
                         Global Shop Monitor & Governance
                     </p>

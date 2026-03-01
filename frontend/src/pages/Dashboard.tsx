@@ -49,7 +49,7 @@ function ShopDashboard() {
         <div className="page">
             <div className="page-header">
                 <div>
-                    <h1>🥛 {user?.shop_name || 'Doodh Dukan'}</h1>
+                    <h1>🥛 {user?.shop_name || 'Doodh Dukan'} (v2.1)</h1>
                     <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
                         Welcome, {user?.name} <span className="badge badge-role">{user?.role}</span>
                     </p>
@@ -138,7 +138,7 @@ export default function Dashboard() {
 
     if (loading) return <div className="page"><div className="loading"><div className="spinner" /></div></div>;
 
-    if (user?.role === 'SUPER_ADMIN') {
+    if (user?.role?.toUpperCase() === 'SUPER_ADMIN') {
         return <SuperAdminDashboard />;
     }
 
