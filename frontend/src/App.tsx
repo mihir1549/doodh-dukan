@@ -33,7 +33,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
-      <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
+      <Route path="/register" element={<Register />} />
       <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/add-entry" element={<ProtectedRoute><AddEntry /></ProtectedRoute>} />
       <Route path="/today" element={<ProtectedRoute><TodayEntries /></ProtectedRoute>} />

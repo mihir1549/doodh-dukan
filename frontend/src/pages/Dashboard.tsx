@@ -142,7 +142,7 @@ export default function Dashboard() {
         return <SuperAdminDashboard />;
     }
 
-    if (user?.role === 'CUSTOMER') {
+    if (user?.role?.toUpperCase() === 'CUSTOMER') {
         return <Navigate to="/card" replace />;
     }
 
