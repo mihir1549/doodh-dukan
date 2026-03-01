@@ -37,7 +37,7 @@ export default function SuperAdminDashboard() {
                     <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>
                         Management Portal
                     </div>
-                    <h1>🛠️ Platform Admin (v2.2)</h1>
+                    <h1 style={{ color: '#fff', background: '#ef4444', padding: '4px 12px', borderRadius: '8px' }}>🛠️ Platform Admin (v2.3 - FIXED)</h1>
                     <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
                         Global Shop Monitor & Governance
                     </p>
@@ -67,12 +67,12 @@ export default function SuperAdminDashboard() {
                     </div>
                 </button>
 
-                <button className="quick-action-btn" onClick={() => navigate('/register')}>
+                <button className="quick-action-btn" onClick={() => navigate('/registration-portal')}>
                     <div className="quick-action-icon">➕</div>
                     <div>
-                        <div>Register New Shop (v2.2)</div>
+                        <div>Register New Shop (v2.3)</div>
                         <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 400 }}>
-                            Create a new shop tenant
+                            Direct link to shop creation portal
                         </div>
                     </div>
                 </button>

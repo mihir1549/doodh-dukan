@@ -34,6 +34,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
       <Route path="/register" element={<Register />} />
+      <Route path="/registration-portal" element={<Register />} />
       <Route path="/test" element={<div className="page"><h1>Test Page</h1><button className="btn" onClick={() => window.history.back()}>Back</button></div>} />
       <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/add-entry" element={<ProtectedRoute><AddEntry /></ProtectedRoute>} />
