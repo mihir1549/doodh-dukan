@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
-import { DailyEntry, SourceChannel } from './daily-entry.entity';
+import { DailyEntry, SourceChannel, EntrySlot } from './daily-entry.entity';
 import { MonthlySummary } from '../summaries/monthly-summary.entity';
 import { ProductsService } from '../products/products.service';
 import { CreateEntryDto } from './dto/entry.dto';
@@ -101,6 +101,7 @@ export class EntriesService {
                 unit_price: unitPrice,
                 line_total: lineTotal,
                 source_channel: sourceChannel,
+                entry_slot: dto.entry_slot || EntrySlot.MORNING,
                 entered_by: userId,
                 month_year: monthYear,
             });

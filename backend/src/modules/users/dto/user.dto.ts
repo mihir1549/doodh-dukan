@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsEnum, IsOptional, Length } from 'class-validator';
+import { IsString, IsNotEmpty, IsEnum, IsOptional, IsUUID, Length } from 'class-validator';
 import { UserRole } from '../user.entity';
 
 export class CreateUserDto {
@@ -12,12 +12,16 @@ export class CreateUserDto {
 
     @IsString()
     @IsNotEmpty()
-    @Length(6, 6, { message: 'PIN must be exactly 6 digits' })
+    @Length(4, 32)
     pin: string;
 
     @IsEnum(UserRole)
     @IsNotEmpty()
     role: UserRole;
+
+    @IsUUID()
+    @IsOptional()
+    customer_id?: string;
 }
 
 export class UpdateUserDto {
@@ -31,10 +35,14 @@ export class UpdateUserDto {
 
     @IsString()
     @IsOptional()
-    @Length(6, 6, { message: 'PIN must be exactly 6 digits' })
+    @Length(4, 32)
     pin?: string;
 
     @IsEnum(UserRole)
     @IsOptional()
     role?: UserRole;
+
+    @IsUUID()
+    @IsOptional()
+    customer_id?: string;
 }

@@ -38,6 +38,7 @@ export class AuthService {
             sub: user.id,
             tenantId: user.tenant_id,
             role: user.role,
+            customerId: user.customer_id,
         };
 
         return {
@@ -49,6 +50,7 @@ export class AuthService {
                 role: user.role,
                 tenant_id: user.tenant_id,
                 shop_name: user.tenant?.shop_name,
+                customer_id: user.customer_id,
             },
         };
     }
@@ -70,6 +72,7 @@ export class AuthService {
             role: user.role,
             tenant_id: user.tenant_id,
             shop_name: user.tenant?.shop_name,
+            customer_id: user.customer_id,
         };
     }
 }

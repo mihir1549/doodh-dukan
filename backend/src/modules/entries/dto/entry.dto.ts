@@ -1,4 +1,5 @@
-import { IsString, IsNotEmpty, IsNumber, IsOptional, IsDateString } from 'class-validator';
+import { IsString, IsNotEmpty, IsNumber, IsOptional, IsDateString, IsEnum } from 'class-validator';
+import { EntrySlot } from '../daily-entry.entity';
 
 export class CreateEntryDto {
     @IsString()
@@ -16,4 +17,8 @@ export class CreateEntryDto {
     @IsNumber()
     @IsNotEmpty()
     quantity: number;
+
+    @IsEnum(EntrySlot)
+    @IsOptional()
+    entry_slot?: EntrySlot;
 }

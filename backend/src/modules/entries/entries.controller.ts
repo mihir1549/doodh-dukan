@@ -7,6 +7,7 @@ import {
     Param,
     Query,
     UseGuards,
+    ForbiddenException,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { EntriesService } from './entries.service';
@@ -31,7 +32,7 @@ export class EntriesController {
     }
 
     @Get()
-    @Roles(UserRole.OWNER, UserRole.SHOP_STAFF, UserRole.DELIVERY)
+    @Roles(UserRole.OWNER, UserRole.SHOP_STAFF, UserRole.DELIVERY, UserRole.CUSTOMER)
     async findEntries(
         @TenantId() tenantId: string,
         @CurrentUser() user: any,
@@ -39,9 +40,18 @@ export class EntriesController {
         @Query('month') month?: string,
         @Query('customer_id') customerId?: string,
     ) {
+        // If CUSTOMER, they can only see their own entries
+        let targetCustomerId = customerId;
+        if (user.role === UserRole.CUSTOMER) {
+            if (!user.customerId) {
+                throw new ForbiddenException('User is not linked to any customer');
+            }
+            targetCustomerId = user.customerId;
+        }
+
         // If month is provided, return all entries for that month
         if (month) {
-            return this.entriesService.findByMonth(tenantId, month, customerId);
+            return this.entriesService.findByMonth(tenantId, month, targetCustomerId);
         }
 
         // DELIVERY sees only their own entries
@@ -53,7 +63,7 @@ export class EntriesController {
                 user.userId,
             );
         }
-        return this.entriesService.findByDate(tenantId, queryDate, customerId);
+        return this.entriesService.findByDate(tenantId, queryDate, targetCustomerId);
     }
 
     @Delete(':id')

@@ -83,6 +83,7 @@ export class UsersService implements OnModuleInit {
             phone: dto.phone,
             password_hash: hashedPin,
             role: dto.role,
+            customer_id: dto.customer_id,
         });
 
         const saved = await this.userRepo.save(user);
@@ -112,6 +113,7 @@ export class UsersService implements OnModuleInit {
         }
         if (dto.pin) user.password_hash = await bcrypt.hash(dto.pin, 10);
         if (dto.role) user.role = dto.role;
+        if (dto.customer_id !== undefined) user.customer_id = dto.customer_id;
 
         const saved = await this.userRepo.save(user);
         return {

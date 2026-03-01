@@ -8,6 +8,7 @@ interface User {
     role: 'SUPER_ADMIN' | 'OWNER' | 'SHOP_STAFF' | 'DELIVERY' | 'CUSTOMER';
     tenant_id: string;
     shop_name: string;
+    customer_id?: string;
 }
 
 interface AuthContextType {

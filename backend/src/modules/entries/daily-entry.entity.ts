@@ -17,10 +17,17 @@ export enum SourceChannel {
     DELIVERY = 'DELIVERY',
 }
 
+export enum EntrySlot {
+    MORNING = 'MORNING',
+    EVENING = 'EVENING',
+    EXTRA = 'EXTRA',
+}
+
 @Entity('daily_entries')
 @Index('idx_entries_tenant_month', ['tenant_id', 'month_year'])
 @Index('idx_entries_customer_month', ['tenant_id', 'customer_id', 'month_year'])
 @Index('idx_entries_date', ['tenant_id', 'entry_date'])
+@Index('idx_entries_slot', ['tenant_id', 'entry_date', 'entry_slot'])
 export class DailyEntry {
     @PrimaryGeneratedColumn('uuid')
     id: string;
@@ -48,6 +55,9 @@ export class DailyEntry {
 
     @Column({ type: 'varchar', length: 20 })
     source_channel: SourceChannel;
+
+    @Column({ type: 'varchar', length: 20, default: EntrySlot.MORNING })
+    entry_slot: EntrySlot;
 
     @Column({ type: 'uuid' })
     entered_by: string;

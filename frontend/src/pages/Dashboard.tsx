@@ -6,6 +6,12 @@ import { entryApi, summaryApi } from '../api';
 export default function Dashboard() {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
+
+    useEffect(() => {
+        if (user?.role === 'CUSTOMER') {
+            navigate('/card');
+        }
+    }, [user, navigate]);
     const [todayCount, setTodayCount] = useState(0);
     const [monthTotal, setMonthTotal] = useState(0);
     const [loading, setLoading] = useState(true);

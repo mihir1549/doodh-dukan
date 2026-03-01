@@ -94,6 +94,7 @@ export const entryApi = {
         product_id: string;
         entry_date: string;
         quantity: number;
+        entry_slot?: string;
     }) => api.post('/entries', data),
     delete: (id: string) => api.delete(`/entries/${id}`),
 };

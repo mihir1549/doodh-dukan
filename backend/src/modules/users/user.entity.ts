@@ -43,6 +43,9 @@ export class User {
     @Column({ type: 'boolean', default: true })
     is_active: boolean;
 
+    @Column({ type: 'uuid', nullable: true })
+    customer_id: string;
+
     @CreateDateColumn({ type: 'timestamptz' })
     created_at: Date;
 

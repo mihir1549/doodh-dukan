@@ -15,6 +15,7 @@ export default function AddEntry() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
+    const [entrySlot, setEntrySlot] = useState<'MORNING' | 'EVENING' | 'EXTRA'>('MORNING');
 
     const today = new Date().toISOString().split('T')[0];
 
@@ -53,6 +54,7 @@ export default function AddEntry() {
                 product_id: selectedProduct.id,
                 entry_date: today,
                 quantity,
+                entry_slot: entrySlot,
             });
             setSuccess(true);
             setTimeout(() => navigate('/today'), 1500);
@@ -136,6 +138,25 @@ export default function AddEntry() {
                     <h3 style={{ marginBottom: '16px', color: 'var(--text-secondary)' }}>
                         Select Product for {selectedCustomer?.name}
                     </h3>
+
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
+                        {['MORNING', 'EVENING', 'EXTRA'].map((slot) => (
+                            <button
+                                key={slot}
+                                onClick={() => setEntrySlot(slot as any)}
+                                style={{
+                                    flex: 1, padding: '10px', borderRadius: 'var(--radius-md)', border: '2px solid',
+                                    fontWeight: 600, fontSize: '0.85rem',
+                                    borderColor: entrySlot === slot ? 'var(--accent)' : 'var(--border)',
+                                    background: entrySlot === slot ? 'var(--accent)' : 'var(--bg-card)',
+                                    color: entrySlot === slot ? '#white' : 'var(--text-secondary)',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                {slot}
+                            </button>
+                        ))}
+                    </div>
                     <div className="product-grid">
                         {products.map((p) => (
                             <div
@@ -327,6 +348,10 @@ export default function AddEntry() {
                         <div className="confirm-row">
                             <span className="confirm-label">Date</span>
                             <span className="confirm-value">{today}</span>
+                        </div>
+                        <div className="confirm-row">
+                            <span className="confirm-label">Slot</span>
+                            <span className="confirm-value">{entrySlot}</span>
                         </div>
                         <div className="confirm-row" style={{ borderBottom: 'none' }}>
                             <span className="confirm-label" style={{ fontSize: '1.1rem' }}>Total</span>

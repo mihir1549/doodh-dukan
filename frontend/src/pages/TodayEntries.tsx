@@ -97,6 +97,9 @@ export default function TodayEntries() {
                                         <span className="badge badge-role" style={{ fontSize: '0.65rem' }}>
                                             {entry.source_channel}
                                         </span>
+                                        <span className="badge" style={{ fontSize: '0.65rem', marginLeft: '4px', background: 'var(--bg-page)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
+                                            {entry.entry_slot}
+                                        </span>
                                         {entry.entered_by_user?.name && (
                                             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '8px' }}>
                                                 by {entry.entered_by_user.name}
