@@ -156,7 +156,9 @@ body {
   margin-bottom: 8px;
 }
 
-input, select, textarea {
+input,
+select,
+textarea {
   width: 100%;
   padding: 14px 16px;
   background: var(--bg-input);
@@ -168,7 +170,9 @@ input, select, textarea {
   transition: border-color 0.2s;
 }
 
-input:focus, select:focus, textarea:focus {
+input:focus,
+select:focus,
+textarea:focus {
   outline: none;
   border-color: var(--border-focus);
   box-shadow: 0 0 0 3px var(--accent-light);
@@ -529,7 +533,9 @@ input:focus, select:focus, textarea:focus {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .empty-state {
@@ -630,8 +636,15 @@ input:focus, select:focus, textarea:focus {
 }
 
 @keyframes slideUp {
-  from { transform: translateX(-50%) translateY(20px); opacity: 0; }
-  to { transform: translateX(-50%) translateY(0); opacity: 1; }
+  from {
+    transform: translateX(-50%) translateY(20px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
 }
 
 /* ========= BOTTOM NAV ========= */
@@ -739,7 +752,8 @@ input:focus, select:focus, textarea:focus {
   transition: all 0.2s;
 }
 
-.product-card:hover, .product-card.selected {
+.product-card:hover,
+.product-card.selected {
   border-color: var(--accent);
   background: var(--accent-light);
 }
@@ -773,7 +787,8 @@ input:focus, select:focus, textarea:focus {
   border: 1px solid transparent;
 }
 
-.customer-item:hover, .customer-item.selected {
+.customer-item:hover,
+.customer-item.selected {
   background: var(--accent-light);
   border-color: var(--accent);
 }
@@ -799,6 +814,57 @@ input:focus, select:focus, textarea:focus {
 .customer-phone {
   font-size: 0.85rem;
   color: var(--text-secondary);
+}
+
+/* ========= MODAL ========= */
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 24px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  animation: modalPop 0.3s ease;
+}
+
+@keyframes modalPop {
+  0% {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.icon-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.icon-btn:hover {
+  color: var(--danger);
 }
 
 /* Settings list */
