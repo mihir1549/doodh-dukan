@@ -78,8 +78,16 @@ export default function CustomerDetail() {
         return d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
     };
 
-    if (loading) return <div className="page"><div className="loading"><div className="spinner" /></div></div>;
-    if (!customer) return <div className="page"><p>Customer not found</p></div>;
+    if (loading) return (
+        <div className="page">
+            <div className="page-header">
+                <button className="back-btn" onClick={() => navigate(-1)}>← Back</button>
+                <h1>Customer</h1>
+            </div>
+            <div className="loading"><div className="spinner" /></div>
+        </div>
+    );
+    if (!customer) return <div className="page"><div className="page-header"><button className="back-btn" onClick={() => navigate(-1)}>← Back</button><h1>Customer</h1></div><p style={{ marginTop: '20px' }}>Customer not found</p></div>;
 
     return (
         <div className="page">

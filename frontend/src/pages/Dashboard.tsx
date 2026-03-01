@@ -43,7 +43,7 @@ function ShopDashboard() {
         }
     };
 
-    if (loading) return <div className="page"><div className="loading"><div className="spinner" /></div></div>;
+    // REMOVED: if (loading) return ...
 
     return (
         <div className="page">
@@ -58,17 +58,24 @@ function ShopDashboard() {
             </div>
 
             {/* Stats */}
-            {user?.role !== 'DELIVERY' && (
+            {loading ? (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '24px' }}>
-                    <div className="stat-card">
-                        <div className="stat-value">{todayCount}</div>
-                        <div className="stat-label">Today's Entries</div>
-                    </div>
-                    <div className="stat-card">
-                        <div className="stat-value">₹{monthTotal.toFixed(0)}</div>
-                        <div className="stat-label">This Month Total</div>
-                    </div>
+                    <div className="stat-card" style={{ opacity: 0.5, height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div className="spinner" style={{ width: '20px', height: '20px', borderWidth: '2px' }} /></div>
+                    <div className="stat-card" style={{ opacity: 0.5, height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div className="spinner" style={{ width: '20px', height: '20px', borderWidth: '2px' }} /></div>
                 </div>
+            ) : (
+                user?.role !== 'DELIVERY' && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '24px' }}>
+                        <div className="stat-card">
+                            <div className="stat-value">{todayCount}</div>
+                            <div className="stat-label">Today's Entries</div>
+                        </div>
+                        <div className="stat-card">
+                            <div className="stat-value">₹{monthTotal.toFixed(0)}</div>
+                            <div className="stat-label">This Month Total</div>
+                        </div>
+                    </div>
+                )
             )}
 
             {/* Quick Actions */}
@@ -136,7 +143,7 @@ function ShopDashboard() {
 export default function Dashboard() {
     const { user, loading } = useAuth();
 
-    if (loading) return <div className="page"><div className="loading"><div className="spinner" /></div></div>;
+    if (loading) return <div className="page"><div className="page-header"><h1>Doodh Dukan</h1></div><div className="loading"><div className="spinner" /></div></div>;
 
     if (user?.role?.toUpperCase() === 'SUPER_ADMIN') {
         return <SuperAdminDashboard />;

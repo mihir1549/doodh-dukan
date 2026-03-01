@@ -39,7 +39,15 @@ export default function Shops() {
         s.phone.includes(search)
     );
 
-    if (loading) return <div className="page"><div className="loading"><div className="spinner" /></div></div>;
+    if (loading) return (
+        <div className="page">
+            <div className="page-header">
+                <button className="back-btn" onClick={() => navigate('/')}>← Back</button>
+                <h1>🏢 Manage Shops</h1>
+            </div>
+            <div className="loading"><div className="spinner" /></div>
+        </div>
+    );
 
     return (
         <div className="page">
