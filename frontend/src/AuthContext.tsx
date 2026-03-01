@@ -21,24 +21,26 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-    const [user, setUser] = useState<User | null>(null);
+    const [user, setUser] = useState<User | null>(() => {
+        const savedUser = localStorage.getItem('user');
+        return savedUser ? JSON.parse(savedUser) : null;
+    });
     const [token, setToken] = useState<string | null>(
         localStorage.getItem('token')
     );
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(!user && !!token);
 
     useEffect(() => {
         if (token) {
             authApi
                 .me()
                 .then((res) => {
-                    setUser(res.data.data);
+                    const userData = res.data.data;
+                    setUser(userData);
+                    localStorage.setItem('user', JSON.stringify(userData));
                 })
                 .catch(() => {
-                    localStorage.removeItem('token');
-                    localStorage.removeItem('user');
-                    setToken(null);
-                    setUser(null);
+                    logout();
                 })
                 .finally(() => setLoading(false));
         } else {

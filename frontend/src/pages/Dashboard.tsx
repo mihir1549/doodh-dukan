@@ -18,23 +18,25 @@ export default function Dashboard() {
     }, []);
 
     const loadDashboard = async () => {
+        setLoading(true);
         try {
             const [entriesRes, summaryRes] = await Promise.all([
-                entryApi.list(today),
-                user?.role !== 'DELIVERY' ? summaryApi.list(currentMonth) : Promise.resolve(null),
+                entryApi.list(today).catch(() => ({ data: { data: [] } })),
+                user?.role !== 'DELIVERY'
+                    ? summaryApi.list(currentMonth).catch(() => ({ data: { data: [] } }))
+                    : Promise.resolve({ data: { data: [] } }),
             ]);
+
             const entries = entriesRes.data?.data || [];
             setTodayCount(Array.isArray(entries) ? entries.length : 0);
 
-            if (summaryRes) {
-                const summaries = summaryRes.data?.data || [];
-                const total = Array.isArray(summaries)
-                    ? summaries.reduce((sum: number, s: any) => sum + Number(s.total_amount || 0), 0)
-                    : 0;
-                setMonthTotal(total);
-            }
-        } catch {
-            // API not connected, show 0s
+            const summaries = summaryRes?.data?.data || [];
+            const total = Array.isArray(summaries)
+                ? summaries.reduce((sum: number, s: any) => sum + Number(s.total_amount || 0), 0)
+                : 0;
+            setMonthTotal(total);
+        } catch (error) {
+            console.error('Dashboard load failed:', error);
         } finally {
             setLoading(false);
         }
