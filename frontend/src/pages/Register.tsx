@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../AuthContext';
 import { tenantApi } from '../api';
 
 export default function Register() {
+    const { user } = useAuth();
     const navigate = useNavigate();
     const [formData, setFormData] = useState({
         shop_name: '',
@@ -43,8 +45,8 @@ export default function Register() {
                 <p style={{ color: 'var(--text-muted)', marginBottom: '24px', fontSize: '0.9rem' }}>
                     Login with phone <strong>{formData.phone}</strong> and your 6-digit PIN
                 </p>
-                <button className="btn btn-primary btn-full btn-lg" onClick={() => navigate('/login')}>
-                    Go to Login →
+                <button className="btn btn-primary btn-full btn-lg" onClick={() => navigate(user ? '/' : '/login')}>
+                    {user ? '← Back to Admin' : 'Go to Login →'}
                 </button>
             </div>
         );
@@ -52,7 +54,12 @@ export default function Register() {
 
     return (
         <div className="page">
-            <div style={{ textAlign: 'center', marginBottom: '32px', paddingTop: '20px' }}>
+            <div className="page-header" style={{ marginBottom: '12px' }}>
+                {user && (
+                    <button className="back-btn" onClick={() => navigate('/')}>← Back</button>
+                )}
+            </div>
+            <div style={{ textAlign: 'center', marginBottom: '32px', paddingTop: user ? '0px' : '20px' }}>
                 <div style={{ fontSize: '3rem', marginBottom: '8px' }}>🏪</div>
                 <h1 style={{ color: 'var(--accent)', marginBottom: '4px' }}>Register Shop</h1>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Create your Doodh Dukan account</p>
