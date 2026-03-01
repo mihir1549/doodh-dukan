@@ -102,7 +102,7 @@ export default function Login() {
             {loading ? (
                 <div className="loading"><div className="spinner" /></div>
             ) : (
-                <div className="numpad" style={{ width: '100%', maxWidth: '320px', marginTop: '48px', marginBottom: '16px' }}>
+                <div className="numpad" style={{ marginTop: '24px' }}>
                     {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((d) => (
                         <button key={d} className="numpad-btn" onClick={() => handleNumpad(d)}>
                             {d}
@@ -115,19 +115,19 @@ export default function Login() {
             )}
 
             {!loading && step === 'phone' && (
-                <div style={{ width: '100%', maxWidth: '320px', marginTop: '48px' }}>
+                <div style={{ width: '100%', maxWidth: '360px', marginTop: '32px' }}>
                     <button
                         className="btn btn-primary btn-full"
                         onClick={handlePhoneSubmit}
-                        style={{ padding: '16px', fontSize: '1.2rem', borderRadius: '12px' }}
+                        style={{ padding: '20px', fontSize: '1.2rem', borderRadius: 'var(--radius-xl)' }}
                     >
                         Continue
                     </button>
                 </div>
             )}
 
-            <div style={{ marginTop: '32px', textAlign: 'center' }}>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+            <div style={{ marginTop: '48px', textAlign: 'center' }}>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
                     Contact admin for new shop registration
                 </p>
             </div>
