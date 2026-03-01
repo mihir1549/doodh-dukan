@@ -12,9 +12,11 @@ import { Tenant } from '../tenants/tenant.entity';
 import { DailyEntry } from '../entries/daily-entry.entity';
 
 export enum UserRole {
+    SUPER_ADMIN = 'SUPER_ADMIN',
     OWNER = 'OWNER',
     SHOP_STAFF = 'SHOP_STAFF',
     DELIVERY = 'DELIVERY',
+    CUSTOMER = 'CUSTOMER',
 }
 
 @Entity('users')

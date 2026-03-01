@@ -5,7 +5,7 @@ interface User {
     id: string;
     name: string;
     phone: string;
-    role: 'OWNER' | 'SHOP_STAFF' | 'DELIVERY';
+    role: 'SUPER_ADMIN' | 'OWNER' | 'SHOP_STAFF' | 'DELIVERY' | 'CUSTOMER';
     tenant_id: string;
     shop_name: string;
 }

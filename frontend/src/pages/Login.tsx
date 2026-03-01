@@ -124,13 +124,9 @@ export default function Login() {
             )}
 
             <div style={{ marginTop: '20px', textAlign: 'center' }}>
-                <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>New shop? </span>
-                <span
-                    style={{ color: 'var(--accent)', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 }}
-                    onClick={() => navigate('/register')}
-                >
-                    Register here
-                </span>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                    Contact admin for new shop registration
+                </p>
             </div>
         </div>
     );
