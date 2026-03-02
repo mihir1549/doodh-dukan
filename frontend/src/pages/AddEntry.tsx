@@ -5,7 +5,7 @@ import { customerApi, productApi, entryApi } from '../api';
 export default function AddEntry() {
     const navigate = useNavigate();
     const [step, setStep] = useState(1);
-    const [customers, setCustomers] = useState<any[]>([]);
+    const [allCustomers, setAllCustomers] = useState<any[]>([]);
     const [products, setProducts] = useState<any[]>([]);
     const [search, setSearch] = useState('');
     const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
@@ -13,9 +13,6 @@ export default function AddEntry() {
     const [quantity, setQuantity] = useState(1);
     const [qtyStr, setQtyStr] = useState('');  // for loose milk numpad
     const [loading, setLoading] = useState(false);
-    const [loadingMore, setLoadingMore] = useState(false);
-    const [page, setPage] = useState(1);
-    const [hasMore, setHasMore] = useState(true);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
     const [entrySlot] = useState<'MORNING' | 'EVENING' | 'EXTRA'>('MORNING');
@@ -24,52 +21,30 @@ export default function AddEntry() {
 
     useEffect(() => {
         loadProducts();
+        loadAllCustomers();
     }, []);
 
-    useEffect(() => {
-        const timeoutId = setTimeout(() => {
-            setPage(1);
-            loadCustomers(search, 1);
-        }, 300);
-        return () => clearTimeout(timeoutId);
-    }, [search]);
-
-    const loadCustomers = async (q = '', pageNum = 1) => {
-        if (pageNum === 1) setLoading(true);
-        else setLoadingMore(true);
-
+    const loadAllCustomers = async () => {
+        setLoading(true);
         try {
-            const res = await customerApi.list(q, pageNum, 50); // Using 50 for smoother initial load
+            const res = await customerApi.list('', 1, 10000); // Load all customers initially
             const newData = res.data?.data?.data || [];
-
-            if (pageNum === 1) {
-                setCustomers(newData);
-            } else {
-                setCustomers(prev => [...prev, ...newData]);
-            }
-
-            // Checking if we have more pages (res.data.data.meta gives totalPages)
-            const meta = res.data?.data?.meta;
-            if (meta) {
-                setHasMore(pageNum < meta.totalPages);
-            } else {
-                setHasMore(newData.length === 50);
-            }
+            setAllCustomers(newData);
         } catch {
-            if (pageNum === 1) setCustomers([]);
+            setAllCustomers([]);
         } finally {
             setLoading(false);
-            setLoadingMore(false);
         }
     };
 
-    const handleLoadMore = () => {
-        if (hasMore && !loadingMore && !loading) {
-            const nextPage = page + 1;
-            setPage(nextPage);
-            loadCustomers(search, nextPage);
-        }
-    };
+    const filteredCustomers = allCustomers.filter(c => {
+        if (!search) return true;
+        const lowerSearch = search.toLowerCase();
+        const nameMatch = c.name?.toLowerCase().includes(lowerSearch);
+        const phoneMatch = c.phone?.toLowerCase().includes(lowerSearch);
+        const idMatch = c.customer_number?.toString().includes(lowerSearch);
+        return nameMatch || phoneMatch || idMatch;
+    });
 
     const loadProducts = async () => {
         try {
@@ -150,7 +125,7 @@ export default function AddEntry() {
                     <div
                         style={{ maxHeight: '60vh', overflowY: 'auto', paddingRight: '4px' }}
                     >
-                        {customers.map((c) => (
+                        {filteredCustomers.map((c) => (
                             <div
                                 key={c.id}
                                 className={`customer-item ${selectedCustomer?.id === c.id ? 'selected' : ''}`}
@@ -164,21 +139,10 @@ export default function AddEntry() {
                             </div>
                         ))}
 
-                        {hasMore && customers.length > 0 && !loading && (
-                            <button
-                                className="btn btn-outline btn-full"
-                                style={{ marginTop: '10px', marginBottom: '10px' }}
-                                onClick={handleLoadMore}
-                                disabled={loadingMore}
-                            >
-                                {loadingMore ? 'Loading...' : 'Load More'}
-                            </button>
-                        )}
-
-                        {loading && customers.length === 0 && (
+                        {loading && allCustomers.length === 0 && (
                             <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>Loading...</div>
                         )}
-                        {!loading && customers.length === 0 && (
+                        {!loading && filteredCustomers.length === 0 && (
                             <div className="empty-state">
                                 <div className="empty-icon">👤</div>
                                 <p>No customers found</p>
