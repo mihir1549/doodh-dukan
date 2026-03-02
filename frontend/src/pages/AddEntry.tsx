@@ -41,9 +41,8 @@ export default function AddEntry() {
         if (!search) return true;
         const lowerSearch = search.toLowerCase();
         const nameMatch = c.name?.toLowerCase().includes(lowerSearch);
-        const phoneMatch = c.phone?.toLowerCase().includes(lowerSearch);
         const idMatch = c.customer_number?.toString().includes(lowerSearch);
-        return nameMatch || phoneMatch || idMatch;
+        return nameMatch || idMatch;
     });
 
     const loadProducts = async () => {
@@ -116,7 +115,7 @@ export default function AddEntry() {
                     <div className="search-box">
                         <span className="search-icon">🔍</span>
                         <input
-                            placeholder="Search by name, number or phone..."
+                            placeholder="Search by name or ID..."
                             value={search}
                             onChange={(e) => handleSearch(e.target.value)}
                             style={{ paddingLeft: '44px' }}
