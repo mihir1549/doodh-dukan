@@ -28,18 +28,20 @@ export class CustomersService {
 
         if (query?.search) {
             const search = query.search.trim();
-            // Allow searching by customer_number, name, or phone
+            const searchPattern = `%${search}%`;
             const isNumber = /^\d+$/.test(search);
-            if (isNumber) {
-                qb.andWhere(
-                    new Brackets((sub) => {
-                        sub.where('c.customer_number = :num', { num: parseInt(search) })
-                            .orWhere('c.name ILIKE :search', { search: `%${search}%` });
-                    }),
-                );
-            } else {
-                qb.andWhere('c.name ILIKE :search', { search: `%${search}%` });
-            }
+
+            qb.andWhere(
+                new Brackets((sub) => {
+                    sub.where('c.name ILIKE :search', { search: searchPattern });
+                    if (isNumber) {
+                        const num = parseInt(search, 10);
+                        if (num <= 2147483647) {
+                            sub.orWhere('c.customer_number = :num', { num });
+                        }
+                    }
+                }),
+            );
         }
 
         qb.orderBy('c.customer_number', 'ASC')

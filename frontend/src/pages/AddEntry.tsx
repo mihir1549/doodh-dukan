@@ -13,6 +13,9 @@ export default function AddEntry() {
     const [quantity, setQuantity] = useState(1);
     const [qtyStr, setQtyStr] = useState('');  // for loose milk numpad
     const [loading, setLoading] = useState(false);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
     const [entrySlot] = useState<'MORNING' | 'EVENING' | 'EXTRA'>('MORNING');
@@ -20,15 +23,52 @@ export default function AddEntry() {
     const today = new Date().toISOString().split('T')[0];
 
     useEffect(() => {
-        loadCustomers();
         loadProducts();
     }, []);
 
-    const loadCustomers = async (q = '') => {
+    useEffect(() => {
+        const timeoutId = setTimeout(() => {
+            setPage(1);
+            loadCustomers(search, 1);
+        }, 300);
+        return () => clearTimeout(timeoutId);
+    }, [search]);
+
+    const loadCustomers = async (q = '', pageNum = 1) => {
+        if (pageNum === 1) setLoading(true);
+        else setLoadingMore(true);
+
         try {
-            const res = await customerApi.list(q, 1, 50);
-            setCustomers(res.data?.data?.data || []);
-        } catch { setCustomers([]); }
+            const res = await customerApi.list(q, pageNum, 50); // Using 50 for smoother initial load
+            const newData = res.data?.data?.data || [];
+
+            if (pageNum === 1) {
+                setCustomers(newData);
+            } else {
+                setCustomers(prev => [...prev, ...newData]);
+            }
+
+            // Checking if we have more pages (res.data.data.meta gives totalPages)
+            const meta = res.data?.data?.meta;
+            if (meta) {
+                setHasMore(pageNum < meta.totalPages);
+            } else {
+                setHasMore(newData.length === 50);
+            }
+        } catch {
+            if (pageNum === 1) setCustomers([]);
+        } finally {
+            setLoading(false);
+            setLoadingMore(false);
+        }
+    };
+
+    const handleLoadMore = () => {
+        if (hasMore && !loadingMore && !loading) {
+            const nextPage = page + 1;
+            setPage(nextPage);
+            loadCustomers(search, nextPage);
+        }
     };
 
     const loadProducts = async () => {
@@ -40,7 +80,6 @@ export default function AddEntry() {
 
     const handleSearch = (val: string) => {
         setSearch(val);
-        loadCustomers(val);
     };
 
 
@@ -108,7 +147,9 @@ export default function AddEntry() {
                             style={{ paddingLeft: '44px' }}
                         />
                     </div>
-                    <div>
+                    <div
+                        style={{ maxHeight: '60vh', overflowY: 'auto', paddingRight: '4px' }}
+                    >
                         {customers.map((c) => (
                             <div
                                 key={c.id}
@@ -122,7 +163,22 @@ export default function AddEntry() {
                                 </div>
                             </div>
                         ))}
-                        {customers.length === 0 && (
+
+                        {hasMore && customers.length > 0 && !loading && (
+                            <button
+                                className="btn btn-outline btn-full"
+                                style={{ marginTop: '10px', marginBottom: '10px' }}
+                                onClick={handleLoadMore}
+                                disabled={loadingMore}
+                            >
+                                {loadingMore ? 'Loading...' : 'Load More'}
+                            </button>
+                        )}
+
+                        {loading && customers.length === 0 && (
+                            <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>Loading...</div>
+                        )}
+                        {!loading && customers.length === 0 && (
                             <div className="empty-state">
                                 <div className="empty-icon">👤</div>
                                 <p>No customers found</p>
