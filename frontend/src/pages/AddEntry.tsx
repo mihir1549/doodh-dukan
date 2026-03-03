@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ReactSortable } from 'react-sortablejs';
 import { customerApi, productApi, entryApi } from '../api';
 
 export default function AddEntry() {
@@ -15,6 +16,7 @@ export default function AddEntry() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
+    const [displayLimit, setDisplayLimit] = useState(100);
     const [entrySlot] = useState<'MORNING' | 'EVENING' | 'EXTRA'>('MORNING');
 
     const today = new Date().toISOString().split('T')[0];
@@ -29,6 +31,24 @@ export default function AddEntry() {
         try {
             const res = await customerApi.list('', 1, 10000); // Load all customers initially
             const newData = res.data?.data?.data || [];
+
+            // Custom arrangement: load local storage sequence
+            const savedSeq = JSON.parse(localStorage.getItem('myCustomerSequence') || '[]');
+
+            newData.sort((a: any, b: any) => {
+                const indexA = savedSeq.indexOf(a.customer_number);
+                const indexB = savedSeq.indexOf(b.customer_number);
+
+                // If both are in the sequence, sort by their order in sequence
+                if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+                // If only A is in sequence, A comes first
+                if (indexA !== -1) return -1;
+                // If only B is in sequence, B comes first
+                if (indexB !== -1) return 1;
+                // Otherwise keep their original order
+                return 0;
+            });
+
             setAllCustomers(newData);
         } catch {
             setAllCustomers([]);
@@ -37,13 +57,48 @@ export default function AddEntry() {
         }
     };
 
-    const filteredCustomers = allCustomers.filter(c => {
+    const handleReorder = (newState: any[]) => {
+        if (search) return; // don't save sequence if user is actively searching
+
+        // Extract the customer numbers in their new order
+        const newSequence = newState.map(c => c.customer_number);
+        localStorage.setItem('myCustomerSequence', JSON.stringify(newSequence));
+
+        // Update allCustomers so the UI does not snap back
+        const updatedAllCustomers = [...allCustomers].sort((a: any, b: any) => {
+            const indexA = newSequence.indexOf(a.customer_number);
+            const indexB = newSequence.indexOf(b.customer_number);
+            if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+            if (indexA !== -1) return -1;
+            if (indexB !== -1) return 1;
+            return 0;
+        });
+        setAllCustomers(updatedAllCustomers);
+    };
+
+    const handlePin = (customer: any) => {
+        // Move this customer to the very top of the sequence
+        const savedSeq: any[] = JSON.parse(localStorage.getItem('myCustomerSequence') || '[]');
+        const newSeq = [customer.customer_number, ...savedSeq.filter((num: any) => num !== customer.customer_number)];
+        localStorage.setItem('myCustomerSequence', JSON.stringify(newSeq));
+
+        // Clear search to show the customer at the top
+        setSearch('');
+        setDisplayLimit(100);
+
+        // Reload/Re-sort customers
+        loadAllCustomers();
+    };
+
+    const rawFiltered = allCustomers.filter(c => {
         if (!search) return true;
         const lowerSearch = search.toLowerCase();
         const nameMatch = c.name?.toLowerCase().includes(lowerSearch);
         const idMatch = c.customer_number?.toString().includes(lowerSearch);
         return nameMatch || idMatch;
     });
+
+    const filteredCustomers = rawFiltered.slice(0, displayLimit);
 
     const loadProducts = async () => {
         try {
@@ -124,19 +179,53 @@ export default function AddEntry() {
                     <div
                         style={{ maxHeight: '60vh', overflowY: 'auto', paddingRight: '4px' }}
                     >
-                        {filteredCustomers.map((c) => (
-                            <div
-                                key={c.id}
-                                className={`customer-item ${selectedCustomer?.id === c.id ? 'selected' : ''}`}
-                                onClick={() => { setSelectedCustomer(c); setStep(2); }}
-                            >
-                                <div className="customer-avatar">{c.customer_number || c.name?.charAt(0)?.toUpperCase()}</div>
-                                <div>
-                                    <div className="customer-name">#{c.customer_number} · {c.name}</div>
-                                    {c.phone && <div className="customer-phone">{c.phone}</div>}
+                        <ReactSortable
+                            list={filteredCustomers}
+                            setList={handleReorder}
+                            animation={200}
+                            handle=".drag-handle"
+                            disabled={search.length > 0}
+                        >
+                            {filteredCustomers.map((c) => (
+                                <div
+                                    key={c.id}
+                                    className={`customer-item ${selectedCustomer?.id === c.id ? 'selected' : ''}`}
+                                    onClick={() => { setSelectedCustomer(c); setStep(2); }}
+                                    style={{ cursor: search ? 'pointer' : 'grab' }}
+                                >
+                                    <div className="customer-avatar">{c.customer_number || c.name?.charAt(0)?.toUpperCase()}</div>
+                                    <div>
+                                        <div className="customer-name">#{c.customer_number} · {c.name}</div>
+                                        {c.phone && <div className="customer-phone">{c.phone}</div>}
+                                    </div>
+
+                                    <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); handlePin(c); }}
+                                            title="Move to Top"
+                                            style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', opacity: 0.6 }}
+                                        >
+                                            📌
+                                        </button>
+                                        {!search && (
+                                            <div className="drag-handle" style={{ color: '#ccc', padding: '10px' }}>
+                                                ☰
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
+                            ))}
+                        </ReactSortable>
+
+                        {rawFiltered.length > displayLimit && (
+                            <button
+                                onClick={() => setDisplayLimit(prev => prev + 100)}
+                                className="btn btn-secondary btn-full"
+                                style={{ marginTop: '12px', background: 'var(--bg-card)', border: '1px dashed var(--border)' }}
+                            >
+                                Load More (+100) ... Total {rawFiltered.length}
+                            </button>
+                        )}
 
                         {loading && allCustomers.length === 0 && (
                             <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>Loading...</div>
