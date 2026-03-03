@@ -33,11 +33,11 @@ export default function AddEntry() {
             const newData = res.data?.data?.data || [];
 
             // Custom arrangement: load local storage sequence
-            const savedSeq = JSON.parse(localStorage.getItem('myCustomerSequence') || '[]');
+            const savedSeq = JSON.parse(localStorage.getItem('myCustomerSequence') || '[]').map(String);
 
             newData.sort((a: any, b: any) => {
-                const indexA = savedSeq.indexOf(a.customer_number);
-                const indexB = savedSeq.indexOf(b.customer_number);
+                const indexA = savedSeq.indexOf(String(a.customer_number));
+                const indexB = savedSeq.indexOf(String(b.customer_number));
 
                 // If both are in the sequence, sort by their order in sequence
                 if (indexA !== -1 && indexB !== -1) return indexA - indexB;
@@ -60,14 +60,14 @@ export default function AddEntry() {
     const handleReorder = (newState: any[]) => {
         if (search) return; // don't save sequence if user is actively searching
 
-        // Extract the customer numbers in their new order
-        const newSequence = newState.map(c => c.customer_number);
+        // Extract the customer numbers in their new order as strings
+        const newSequence = newState.map(c => String(c.customer_number));
         localStorage.setItem('myCustomerSequence', JSON.stringify(newSequence));
 
         // Update allCustomers so the UI does not snap back
         const updatedAllCustomers = [...allCustomers].sort((a: any, b: any) => {
-            const indexA = newSequence.indexOf(a.customer_number);
-            const indexB = newSequence.indexOf(b.customer_number);
+            const indexA = newSequence.indexOf(String(a.customer_number));
+            const indexB = newSequence.indexOf(String(b.customer_number));
             if (indexA !== -1 && indexB !== -1) return indexA - indexB;
             if (indexA !== -1) return -1;
             if (indexB !== -1) return 1;
@@ -78,8 +78,8 @@ export default function AddEntry() {
 
     const handlePin = (customer: any) => {
         // Move this customer to the very top of the sequence
-        const savedSeq: any[] = JSON.parse(localStorage.getItem('myCustomerSequence') || '[]');
-        const newSeq = [customer.customer_number, ...savedSeq.filter((num: any) => num !== customer.customer_number)];
+        const savedSeq: string[] = JSON.parse(localStorage.getItem('myCustomerSequence') || '[]').map(String);
+        const newSeq = [String(customer.customer_number), ...savedSeq.filter((num: string) => num !== String(customer.customer_number))];
         localStorage.setItem('myCustomerSequence', JSON.stringify(newSeq));
 
         // Clear search to show the customer at the top
