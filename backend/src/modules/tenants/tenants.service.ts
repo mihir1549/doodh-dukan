@@ -84,17 +84,22 @@ export class TenantsService {
     }
 
     async updateSequence(id: string, sequence: number[]) {
+        console.log(`[TenantsService] UPDATING sequence for tenant: ${id}, count: ${sequence.length}`);
         const tenant = await this.tenantRepo.findOne({ where: { id } });
         if (!tenant) throw new ConflictException('Shop not found');
+
         tenant.customer_sequence = sequence;
-        return this.tenantRepo.save(tenant);
+        const saved = await this.tenantRepo.save(tenant);
+        console.log(`[TenantsService] SAVE complete. Sequence in saved object: ${saved.customer_sequence?.length || 0} items`);
+        return saved;
     }
 
     async getSequence(id: string) {
         const tenant = await this.tenantRepo.findOne({
-            where: { id },
-            select: ['id', 'customer_sequence']
+            where: { id }
         });
-        return tenant?.customer_sequence || [];
+        const seq = tenant?.customer_sequence || [];
+        console.log(`[TenantsService] FETCHED sequence for tenant: ${id}, found: ${seq.length} items`);
+        return seq;
     }
 }

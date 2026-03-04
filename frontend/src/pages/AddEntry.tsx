@@ -66,13 +66,16 @@ export default function AddEntry() {
         if (search) return; // don't save sequence if user is actively searching
 
         // 1. Synchronously update the state for instant UI feedback
-        const newSequence = newState.map(c => Number(c.customer_number));
-        const topNums = new Set(newSequence.map(String));
-        const rest = allCustomers.filter(c => !topNums.has(String(c.customer_number || '')));
-        setAllCustomers([...newState, ...rest]);
+        const newSequenceSlice = newState.map(c => Number(c.customer_number));
+        const sliceNums = new Set(newSequenceSlice.map(String));
+        const rest = allCustomers.filter(c => !sliceNums.has(String(c.customer_number || '')));
+        const fullNewList = [...newState, ...rest];
 
-        // 2. Fire and forget the backend update
-        customerApi.saveSequence(newSequence)
+        setAllCustomers(fullNewList);
+
+        // 2. Fire and forget the backend update of the FULL sequence
+        const fullSequence = fullNewList.map(c => Number(c.customer_number));
+        customerApi.saveSequence(fullSequence)
             .then(() => {
                 setShowSaveToast(true);
                 setTimeout(() => setShowSaveToast(false), 2000);
