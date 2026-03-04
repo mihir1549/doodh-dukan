@@ -79,17 +79,12 @@ export default function AddEntry() {
         // Extract the customer numbers in their new order as strings
         const newSequence = newState.map(c => String(c.customer_number));
         localStorage.setItem('myCustomerSequence', JSON.stringify(newSequence));
+        localStorage.setItem('myCustomerSequence_Timestamp', new Date().toISOString());
 
-        // Update allCustomers so the UI does not snap back
-        const updatedAllCustomers = [...allCustomers].sort((a: any, b: any) => {
-            const indexA = newSequence.indexOf(String(a.customer_number));
-            const indexB = newSequence.indexOf(String(b.customer_number));
-            if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-            if (indexA !== -1) return -1;
-            if (indexB !== -1) return 1;
-            return 0;
-        });
-        setAllCustomers(updatedAllCustomers);
+        // Update allCustomers by taking the reordered items and appending the rest
+        const topIds = new Set(newSequence);
+        const rest = allCustomers.filter(c => !topIds.has(String(c.customer_number)));
+        setAllCustomers([...newState, ...rest]);
     };
 
     const handlePin = (customer: any) => {
@@ -198,13 +193,14 @@ export default function AddEntry() {
                         <ReactSortable
                             list={filteredCustomers}
                             setList={handleReorder}
-                            animation={200}
+                            animation={150}
                             handle=".drag-handle"
                             disabled={search.length > 0}
                             ghostClass="sortable-ghost"
                             chosenClass="sortable-chosen"
                             dragClass="sortable-drag"
-                            forceFallback={true} // better handling on some mobile browsers
+                            delay={50} // slight delay for touch to allow scrolling
+                            delayOnTouchOnly={true}
                         >
                             {filteredCustomers.map((c) => (
                                 <div
