@@ -190,7 +190,24 @@ export default function AddEntry() {
                 <h1>Add Entry</h1>
             </div>
 
-            {showSaveToast && <div className="save-toast">✨ Sequence Saved</div>}
+            {showSaveToast && (
+                <div style={{
+                    position: 'fixed',
+                    top: '20px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    background: 'var(--success)',
+                    color: 'white',
+                    padding: '10px 20px',
+                    borderRadius: '20px',
+                    fontWeight: 'bold',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                    zIndex: 9999,
+                    pointerEvents: 'none',
+                }}>
+                    ✨ Sequence Saved
+                </div>
+            )}
 
             {/* Step indicators */}
             <div className="steps">
