@@ -49,7 +49,7 @@ export class AuthService {
                 phone: user.phone,
                 role: user.role,
                 tenant_id: user.tenant_id,
-                shop_name: user.tenant?.shop_name,
+                tenant: user.tenant,
                 customer_id: user.customer_id,
             },
         };
@@ -71,7 +71,7 @@ export class AuthService {
             phone: user.phone,
             role: user.role,
             tenant_id: user.tenant_id,
-            shop_name: user.tenant?.shop_name,
+            tenant: user.tenant,
             customer_id: user.customer_id,
         };
     }
