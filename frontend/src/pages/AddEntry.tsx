@@ -36,7 +36,7 @@ export default function AddEntry() {
             const newData = res.data?.data?.data || [];
 
             // Custom arrangement: load sequence from API response
-            const savedSeq: string[] = (res.data?.customer_sequence || []).map(String);
+            const savedSeq: string[] = (res.data?.data?.customer_sequence || []).map(String);
 
             newData.sort((a: any, b: any) => {
                 const valA = String(a.customer_number || '');
