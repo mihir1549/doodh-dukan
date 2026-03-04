@@ -13,9 +13,8 @@ export const databaseConfig: TypeOrmModuleOptions = process.env.DATABASE_URL
       rejectUnauthorized: false,
     },
     extra: {
-      max: 20, // Increase pool size for better parallel handling
+      max: 10,
       idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 2000,
     },
   }
   : {

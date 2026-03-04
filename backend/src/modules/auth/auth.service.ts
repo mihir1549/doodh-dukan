@@ -49,7 +49,12 @@ export class AuthService {
                 phone: user.phone,
                 role: user.role,
                 tenant_id: user.tenant_id,
-                tenant: user.tenant,
+                tenant: user.tenant ? {
+                    id: user.tenant.id,
+                    shop_name: user.tenant.shop_name,
+                    currency_symbol: user.tenant.currency_symbol,
+                    locale: user.tenant.locale,
+                } : null,
                 customer_id: user.customer_id,
             },
         };
