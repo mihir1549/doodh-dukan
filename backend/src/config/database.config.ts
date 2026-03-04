@@ -10,7 +10,12 @@ export const databaseConfig: TypeOrmModuleOptions = process.env.DATABASE_URL
     synchronize: process.env.DB_SYNCHRONIZE === 'true', // Use env var for initialization
     logging: false,
     ssl: {
-      rejectUnauthorized: false, // Required for Render/vultr/etc
+      rejectUnauthorized: false,
+    },
+    extra: {
+      max: 20, // Increase pool size for better parallel handling
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 2000,
     },
   }
   : {
