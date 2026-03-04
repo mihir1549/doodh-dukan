@@ -54,6 +54,7 @@ export default function AddEntry() {
             });
 
             setAllCustomers(newData);
+            hasLoadedRef.current = true;
         } catch {
             setAllCustomers([]);
         } finally {
@@ -63,6 +64,7 @@ export default function AddEntry() {
 
     // Auto-save debounced logic
     const saveTimerRef = useRef<any>(null);
+    const hasLoadedRef = useRef(false);
     const [orderDirty, setOrderDirty] = useState(false);
 
     const triggerSave = (newList: any[]) => {
