@@ -20,6 +20,7 @@ export default function AddEntry() {
     const [success, setSuccess] = useState(false);
     const [displayLimit, setDisplayLimit] = useState(100);
     const [entrySlot] = useState<'MORNING' | 'EVENING' | 'EXTRA'>('MORNING');
+    const [showSaveToast, setShowSaveToast] = useState(false);
 
     const today = new Date().toISOString().split('T')[0];
 
@@ -34,10 +35,10 @@ export default function AddEntry() {
             const res = await customerApi.list('', 1, 10000); // Load all customers initially
             const newData = res.data?.data?.data || [];
 
-            // Custom arrangement: load local storage sequence (v5 uses UUID 'id')
+            // Custom arrangement: load local storage sequence (v6 uses stable customer_number)
             let savedSeq: string[] = [];
             try {
-                const raw = localStorage.getItem('myCustomerSequence_v5');
+                const raw = localStorage.getItem('myCustomerSequence_v6');
                 if (raw) {
                     const parsed = JSON.parse(raw);
                     if (Array.isArray(parsed)) {
@@ -49,8 +50,10 @@ export default function AddEntry() {
             }
 
             newData.sort((a: any, b: any) => {
-                const indexA = savedSeq.indexOf(String(a.id));
-                const indexB = savedSeq.indexOf(String(b.id));
+                const valA = String(a.customer_number || '');
+                const valB = String(b.customer_number || '');
+                const indexA = savedSeq.indexOf(valA);
+                const indexB = savedSeq.indexOf(valB);
 
                 // If both are in the sequence, sort by their order in sequence
                 if (indexA !== -1 && indexB !== -1) return indexA - indexB;
@@ -73,28 +76,33 @@ export default function AddEntry() {
     const handleReorder = (newState: any[]) => {
         if (search) return; // don't save sequence if user is actively searching
 
-        // Extract the unique IDs in their new order
-        const newSequence = newState.map(c => String(c.id));
-        localStorage.setItem('myCustomerSequence_v5', JSON.stringify(newSequence));
+        // Extract the stable customer numbers in their new order
+        const newSequence = newState.map(c => String(c.customer_number || ''));
+        localStorage.setItem('myCustomerSequence_v6', JSON.stringify(newSequence));
 
         // Reconstruct allCustomers: reordered slice followed by the rest
-        const topIds = new Set(newSequence);
-        const rest = allCustomers.filter(c => !topIds.has(String(c.id)));
+        const topNums = new Set(newSequence);
+        const rest = allCustomers.filter(c => !topNums.has(String(c.customer_number || '')));
         setAllCustomers([...newState, ...rest]);
+
+        // Show save feedback
+        setShowSaveToast(true);
+        setTimeout(() => setShowSaveToast(false), 2000);
     };
 
     const resetOrder = () => {
         if (window.confirm("Restore default customer ordering?")) {
-            localStorage.removeItem('myCustomerSequence_v5');
+            localStorage.removeItem('myCustomerSequence_v6');
             loadAllCustomers();
         }
     };
 
     const handlePin = (customer: any) => {
         // Move this customer to the very top of the sequence
-        const savedSeq: string[] = JSON.parse(localStorage.getItem('myCustomerSequence_v5') || '[]').map(String);
-        const newSeq = [String(customer.id), ...savedSeq.filter((id: string) => id !== String(customer.id))];
-        localStorage.setItem('myCustomerSequence_v5', JSON.stringify(newSeq));
+        const savedSeq: string[] = JSON.parse(localStorage.getItem('myCustomerSequence_v6') || '[]').map(String);
+        const targetNum = String(customer.customer_number || '');
+        const newSeq = [targetNum, ...savedSeq.filter((num: string) => num !== targetNum)];
+        localStorage.setItem('myCustomerSequence_v6', JSON.stringify(newSeq));
 
         // Clear search to show the customer at the top
         setSearch('');
@@ -102,6 +110,10 @@ export default function AddEntry() {
 
         // Reload/Re-sort customers
         loadAllCustomers();
+
+        // Show save feedback
+        setShowSaveToast(true);
+        setTimeout(() => setShowSaveToast(false), 2000);
 
         // Scroll the container to top after pinning so user sees the result
         setTimeout(() => {
@@ -178,6 +190,8 @@ export default function AddEntry() {
                 <h1>Add Entry</h1>
             </div>
 
+            {showSaveToast && <div className="save-toast">✨ Sequence Saved</div>}
+
             {/* Step indicators */}
             <div className="steps">
                 {[1, 2, 3, 4].map((s) => (
@@ -213,13 +227,13 @@ export default function AddEntry() {
                         <ReactSortable
                             list={filteredCustomers}
                             setList={handleReorder}
-                            animation={150} // slightly faster for a snappier feel
+                            animation={150}
                             handle=".drag-handle"
                             disabled={search.length > 0}
                             scroll={true}
                             forceFallback={true}
-                            scrollSensitivity={120} // even more sensitive to dragging near edges
-                            scrollSpeed={40}       // faster scroll once triggered
+                            scrollSensitivity={150} // high sensitivity for better scrolling
+                            scrollSpeed={25}        // fast but controlled scroll
                             bubbleScroll={true}
                         >
                             {filteredCustomers.map((c) => (
