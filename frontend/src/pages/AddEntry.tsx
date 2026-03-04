@@ -34,9 +34,14 @@ export default function AddEntry() {
         try {
             const res = await customerApi.list('', 1, 10000); // Load all customers initially
             const newData = res.data?.data?.data || [];
+            console.log(`[AddEntry] Loaded ${newData.length} customers from API`);
 
             // Custom arrangement: load sequence from API response
-            const savedSeq: string[] = (res.data?.data?.customer_sequence || []).map(String);
+            const responseData = res.data?.data;
+            const savedSeqNums: number[] = responseData?.customer_sequence || [];
+            console.log(`[AddEntry] Sequence from API:`, savedSeqNums);
+
+            const savedSeq = savedSeqNums.map(String);
 
             newData.sort((a: any, b: any) => {
                 const valA = String(a.customer_number || '');

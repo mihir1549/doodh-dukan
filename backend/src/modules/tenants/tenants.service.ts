@@ -88,22 +88,18 @@ export class TenantsService {
         console.log(`[TenantsService] Sequence payload:`, JSON.stringify(sequence));
 
         try {
-            // Use query builder for a direct, non-magic update
-            const result = await this.tenantRepo.createQueryBuilder()
-                .update(Tenant)
-                .set({ customer_sequence: sequence })
-                .where("id = :id", { id })
-                .execute();
+            // Direct PostgreSQL query to be 100% sure
+            await this.dataSource.query(
+                'UPDATE tenants SET customer_sequence = $1 WHERE id = $2',
+                [JSON.stringify(sequence), id]
+            );
 
-            console.log(`[TenantsService] UPDATE result:`, result.affected, "rows affected");
+            console.log(`[TenantsService] UPDATE successful`);
 
-            // Verify immediately
-            const check = await this.tenantRepo.findOne({ where: { id } });
-            console.log(`[TenantsService] VERIFY after save - count in DB:`, check?.customer_sequence?.length || 0);
-
-            return check;
+            // Return updated tenant
+            return this.tenantRepo.findOne({ where: { id } });
         } catch (err) {
-            console.error(`[TenantsService] CRITICAL ERROR updating sequence:`, err);
+            console.error(`[TenantsService] DATABASE ERROR:`, err);
             throw err;
         }
     }
