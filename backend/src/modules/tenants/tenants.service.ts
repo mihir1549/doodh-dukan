@@ -83,7 +83,7 @@ export class TenantsService {
         return this.tenantRepo.save(tenant);
     }
 
-    async updateSequence(id: string, sequence: number[]) {
+    async updateSequence(id: string, sequence: string[]) {
         console.log(`[TenantsService] UPDATING sequence for tenant ID: "${id}"`);
         console.log(`[TenantsService] Sequence payload:`, JSON.stringify(sequence));
 

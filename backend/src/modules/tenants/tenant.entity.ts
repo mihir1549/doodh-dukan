@@ -33,7 +33,7 @@ export class Tenant {
     is_active: boolean;
 
     @Column('jsonb', { nullable: true })
-    customer_sequence: number[];
+    customer_sequence: string[];
 
     @CreateDateColumn({ type: 'timestamptz' })
     created_at: Date;

@@ -118,7 +118,7 @@ export class CustomersService {
         return { message: 'Customer deactivated' };
     }
 
-    async updateSequence(tenantId: string, sequence: number[]) {
+    async updateSequence(tenantId: string, sequence: string[]) {
         return this.tenantsService.updateSequence(tenantId, sequence);
     }
 }

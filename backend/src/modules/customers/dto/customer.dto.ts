@@ -2,8 +2,8 @@ import { IsString, IsNotEmpty, IsOptional, IsArray, IsNumber } from 'class-valid
 
 export class UpdateSequenceDto {
     @IsArray()
-    @IsNumber({}, { each: true })
-    sequence: number[];
+    @IsString({ each: true })
+    sequence: string[];
 }
 
 export class CreateCustomerDto {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ReactSortable } from 'react-sortablejs';
 import { customerApi, productApi, entryApi } from '../api';
@@ -38,25 +38,19 @@ export default function AddEntry() {
 
             // Custom arrangement: load sequence from API response
             const responseData = res.data?.data;
-            const savedSeqNums: number[] = responseData?.customer_sequence || [];
-            console.log(`[AddEntry] Sequence from API:`, savedSeqNums);
-
-            const savedSeq = savedSeqNums.map(String);
+            const savedSeq: string[] = responseData?.customer_sequence || []; // Now using UUIDs
+            console.log(`[AddEntry] Sequence from API:`, savedSeq);
 
             newData.sort((a: any, b: any) => {
-                const valA = String(a.customer_number || '');
-                const valB = String(b.customer_number || '');
-                const indexA = savedSeq.indexOf(valA);
-                const indexB = savedSeq.indexOf(valB);
+                const indexA = savedSeq.indexOf(a.id);
+                const indexB = savedSeq.indexOf(b.id);
 
-                // If both are in the sequence, sort by their order in sequence
                 if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-                // If only A is in sequence, A comes first
                 if (indexA !== -1) return -1;
-                // If only B is in sequence, B comes first
                 if (indexB !== -1) return 1;
-                // Otherwise keep their original order
-                return 0;
+
+                // Fallback to numeric order if not in custom sequence
+                return Number(a.customer_number || 0) - Number(b.customer_number || 0);
             });
 
             setAllCustomers(newData);
@@ -67,28 +61,13 @@ export default function AddEntry() {
         }
     };
 
-    const handleReorder = (newState: any[]) => {
-        if (search) return; // don't save sequence if user is actively searching
+    // Auto-save debounced logic
+    const saveTimerRef = useRef<any>(null);
+    const [orderDirty, setOrderDirty] = useState(false);
 
-        // 1. Synchronously update the state for instant UI feedback
-        const newSequenceSlice = newState.map(c => Number(c.customer_number));
-        const sliceNums = new Set(newSequenceSlice.map(String));
-        const rest = allCustomers.filter(c => !sliceNums.has(String(c.customer_number || '')));
-        const fullNewList = [...newState, ...rest];
-
-        setAllCustomers(fullNewList);
-
-        // 2. Fire and forget the backend update of the FULL sequence
-        const fullSequence = fullNewList
-            .map(c => Number(c.customer_number))
-            .filter(num => !isNaN(num) && num > 0);
-
-        console.log(`[AddEntry] SAVING sequence: ${fullSequence.length} items. Full payload snapshot:`, fullSequence.slice(0, 5));
-
-        if (fullSequence.length === 0 && allCustomers.length > 0) {
-            console.error("[AddEntry] ABORTING save! Sequence generated was empty despite having customers.");
-            return;
-        }
+    const triggerSave = (newList: any[]) => {
+        const fullSequence = newList.map(c => c.id);
+        console.log(`[AddEntry] SAVING sequence: ${fullSequence.length} IDs to backend.`);
 
         customerApi.saveSequence(fullSequence)
             .then((res) => {
@@ -100,6 +79,21 @@ export default function AddEntry() {
                 console.error("[AddEntry] SAVE failed:", err);
                 setError("Failed to save order to server");
             });
+    };
+
+    const handleReorder = (newState: any[]) => {
+        if (search) return; // don't save sequence if user is actively searching
+
+        // 1. Synchronously update the state for instant UI feedback
+        const sliceIds = new Set(newState.map(c => c.id));
+        const rest = allCustomers.filter(c => !sliceIds.has(c.id));
+        const fullNewList = [...newState, ...rest];
+
+        setAllCustomers(fullNewList);
+
+        // 2. Debounced backend update of the FULL sequence
+        if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = setTimeout(() => triggerSave(fullNewList), 1500);
     };
 
     const resetOrder = async () => {
@@ -116,34 +110,21 @@ export default function AddEntry() {
 
     const handlePin = async (customer: any) => {
         // Move this customer to the very top of the sequence
-        const currentOrder = allCustomers.slice(0, displayLimit).map(c => Number(c.customer_number));
-        const targetNum = Number(customer.customer_number);
-        const newSeq = [targetNum, ...currentOrder.filter(num => num !== targetNum)];
+        const currentOrder = allCustomers.slice(0, displayLimit);
+        const newSeq = [customer, ...currentOrder.filter(c => c.id !== customer.id)];
 
-        try {
-            await customerApi.saveSequence(newSeq);
+        const rest = allCustomers.filter(c => !newSeq.find(s => s.id === c.id));
+        const fullNewList = [...newSeq, ...rest];
 
-            // Clear search to show the customer at the top
-            setSearch('');
-            setDisplayLimit(100);
+        setAllCustomers(fullNewList);
+        setOrderDirty(true);
+        triggerSave(fullNewList);
 
-            // Reload/Re-sort customers from backend
-            await loadAllCustomers();
-
-            // Show save feedback
-            setShowSaveToast(true);
-            setTimeout(() => setShowSaveToast(false), 2000);
-
-            // Scroll the container to top after pinning so user sees the result
-            setTimeout(() => {
-                const container = document.getElementById(SCROLL_CONTAINER_ID);
-                if (container) {
-                    container.scrollTo({ top: 0, behavior: 'smooth' });
-                }
-            }, 100);
-        } catch (err) {
-            setError("Failed to pin customer to top");
-        }
+        // Scroll top
+        setTimeout(() => {
+            const container = document.getElementById(SCROLL_CONTAINER_ID);
+            if (container) container.scrollTo({ top: 0, behavior: 'smooth' });
+        }, 100);
     };
 
     const rawFiltered = allCustomers.filter(c => {
@@ -243,12 +224,32 @@ export default function AddEntry() {
                 <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                         <h3 style={{ color: 'var(--text-secondary)' }}>Select Customer</h3>
-                        <button
-                            onClick={resetOrder}
-                            style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: '0.85rem', cursor: 'pointer' }}
-                        >
-                            🔄 Reset Order
-                        </button>
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                            {orderDirty && (
+                                <button
+                                    onClick={() => triggerSave(allCustomers)}
+                                    style={{
+                                        background: 'var(--success)',
+                                        color: 'white',
+                                        border: 'none',
+                                        padding: '4px 12px',
+                                        borderRadius: '12px',
+                                        fontSize: '0.85rem',
+                                        cursor: 'pointer',
+                                        fontWeight: 'bold',
+                                        boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+                                    }}
+                                >
+                                    💾 Save Order
+                                </button>
+                            )}
+                            <button
+                                onClick={resetOrder}
+                                style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: '0.85rem', cursor: 'pointer' }}
+                            >
+                                🔄 Reset Order
+                            </button>
+                        </div>
                     </div>
                     <div className="search-box">
                         <span className="search-icon">🔍</span>
