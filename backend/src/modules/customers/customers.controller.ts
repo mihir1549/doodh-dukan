@@ -63,4 +63,13 @@ export class CustomersController {
     async deactivate(@TenantId() tenantId: string, @Param('id') id: string) {
         return this.customersService.deactivate(tenantId, id);
     }
+
+    @Patch('sequence')
+    @Roles(UserRole.OWNER, UserRole.SHOP_STAFF)
+    async updateSequence(
+        @TenantId() tenantId: string,
+        @Body('sequence') sequence: number[],
+    ) {
+        return this.customersService.updateSequence(tenantId, sequence);
+    }
 }

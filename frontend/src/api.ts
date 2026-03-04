@@ -81,6 +81,7 @@ export const customerApi = {
         api.post('/customers', data),
     update: (id: string, data: any) => api.patch(`/customers/${id}`, data),
     deactivate: (id: string) => api.delete(`/customers/${id}`),
+    saveSequence: (sequence: number[]) => api.patch('/customers/sequence', { sequence }),
 };
 
 // --- Product APIs ---

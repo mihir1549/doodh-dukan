@@ -35,19 +35,8 @@ export default function AddEntry() {
             const res = await customerApi.list('', 1, 10000); // Load all customers initially
             const newData = res.data?.data?.data || [];
 
-            // Custom arrangement: load local storage sequence (v6 uses stable customer_number)
-            let savedSeq: string[] = [];
-            try {
-                const raw = localStorage.getItem('myCustomerSequence_v6');
-                if (raw) {
-                    const parsed = JSON.parse(raw);
-                    if (Array.isArray(parsed)) {
-                        savedSeq = parsed.map(String);
-                    }
-                }
-            } catch (e) {
-                savedSeq = [];
-            }
+            // Custom arrangement: load sequence from API response
+            const savedSeq: string[] = (res.data?.customer_sequence || []).map(String);
 
             newData.sort((a: any, b: any) => {
                 const valA = String(a.customer_number || '');
@@ -73,55 +62,71 @@ export default function AddEntry() {
         }
     };
 
-    const handleReorder = (newState: any[]) => {
+    const handleReorder = async (newState: any[]) => {
         if (search) return; // don't save sequence if user is actively searching
 
         // Extract the stable customer numbers in their new order
-        const newSequence = newState.map(c => String(c.customer_number || ''));
-        localStorage.setItem('myCustomerSequence_v6', JSON.stringify(newSequence));
+        const newSequence = newState.map(c => Number(c.customer_number));
 
-        // Reconstruct allCustomers: reordered slice followed by the rest
-        const topNums = new Set(newSequence);
-        const rest = allCustomers.filter(c => !topNums.has(String(c.customer_number || '')));
-        setAllCustomers([...newState, ...rest]);
+        // Save to backend immediately
+        try {
+            await customerApi.saveSequence(newSequence);
 
-        // Show save feedback
-        setShowSaveToast(true);
-        setTimeout(() => setShowSaveToast(false), 2000);
-    };
+            // Reconstruct allCustomers: reordered slice followed by the rest
+            const topNums = new Set(newSequence.map(String));
+            const rest = allCustomers.filter(c => !topNums.has(String(c.customer_number || '')));
+            setAllCustomers([...newState, ...rest]);
 
-    const resetOrder = () => {
-        if (window.confirm("Restore default customer ordering?")) {
-            localStorage.removeItem('myCustomerSequence_v6');
-            loadAllCustomers();
+            // Show save feedback
+            setShowSaveToast(true);
+            setTimeout(() => setShowSaveToast(false), 2000);
+        } catch (err) {
+            console.error("Failed to save sequence to backend:", err);
+            setError("Failed to save order to server");
         }
     };
 
-    const handlePin = (customer: any) => {
-        // Move this customer to the very top of the sequence
-        const savedSeq: string[] = JSON.parse(localStorage.getItem('myCustomerSequence_v6') || '[]').map(String);
-        const targetNum = String(customer.customer_number || '');
-        const newSeq = [targetNum, ...savedSeq.filter((num: string) => num !== targetNum)];
-        localStorage.setItem('myCustomerSequence_v6', JSON.stringify(newSeq));
-
-        // Clear search to show the customer at the top
-        setSearch('');
-        setDisplayLimit(100);
-
-        // Reload/Re-sort customers
-        loadAllCustomers();
-
-        // Show save feedback
-        setShowSaveToast(true);
-        setTimeout(() => setShowSaveToast(false), 2000);
-
-        // Scroll the container to top after pinning so user sees the result
-        setTimeout(() => {
-            const container = document.getElementById(SCROLL_CONTAINER_ID);
-            if (container) {
-                container.scrollTo({ top: 0, behavior: 'smooth' });
+    const resetOrder = async () => {
+        if (window.confirm("Restore default customer ordering?")) {
+            try {
+                await customerApi.saveSequence([]);
+                loadAllCustomers();
+            } catch (err) {
+                setError("Failed to reset order");
             }
-        }, 100);
+        }
+    };
+
+    const handlePin = async (customer: any) => {
+        // Move this customer to the very top of the sequence
+        const currentOrder = allCustomers.slice(0, displayLimit).map(c => Number(c.customer_number));
+        const targetNum = Number(customer.customer_number);
+        const newSeq = [targetNum, ...currentOrder.filter(num => num !== targetNum)];
+
+        try {
+            await customerApi.saveSequence(newSeq);
+
+            // Clear search to show the customer at the top
+            setSearch('');
+            setDisplayLimit(100);
+
+            // Reload/Re-sort customers from backend
+            await loadAllCustomers();
+
+            // Show save feedback
+            setShowSaveToast(true);
+            setTimeout(() => setShowSaveToast(false), 2000);
+
+            // Scroll the container to top after pinning so user sees the result
+            setTimeout(() => {
+                const container = document.getElementById(SCROLL_CONTAINER_ID);
+                if (container) {
+                    container.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            }, 100);
+        } catch (err) {
+            setError("Failed to pin customer to top");
+        }
     };
 
     const rawFiltered = allCustomers.filter(c => {

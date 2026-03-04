@@ -4,6 +4,7 @@ import { Repository, ILike, Brackets } from 'typeorm';
 import { Customer } from './customer.entity';
 import { CreateCustomerDto, UpdateCustomerDto } from './dto/customer.dto';
 import { UsersService } from '../users/users.service';
+import { TenantsService } from '../tenants/tenants.service';
 
 @Injectable()
 export class CustomersService {
@@ -11,6 +12,7 @@ export class CustomersService {
         @InjectRepository(Customer)
         private customerRepo: Repository<Customer>,
         private usersService: UsersService,
+        private tenantsService: TenantsService,
     ) { }
 
     async findAll(
@@ -50,8 +52,12 @@ export class CustomersService {
 
         const [data, total] = await qb.getManyAndCount();
 
+        // Get the stored sequence for this tenant
+        const sequence = await this.tenantsService.getSequence(tenantId);
+
         return {
             data,
+            customer_sequence: sequence,
             meta: {
                 page,
                 limit,
@@ -110,5 +116,9 @@ export class CustomersService {
         customer.is_active = false;
         await this.customerRepo.save(customer);
         return { message: 'Customer deactivated' };
+    }
+
+    async updateSequence(tenantId: string, sequence: number[]) {
+        return this.tenantsService.updateSequence(tenantId, sequence);
     }
 }

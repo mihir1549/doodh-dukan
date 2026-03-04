@@ -82,4 +82,19 @@ export class TenantsService {
         tenant.is_active = !tenant.is_active;
         return this.tenantRepo.save(tenant);
     }
+
+    async updateSequence(id: string, sequence: number[]) {
+        const tenant = await this.tenantRepo.findOne({ where: { id } });
+        if (!tenant) throw new ConflictException('Shop not found');
+        tenant.customer_sequence = sequence;
+        return this.tenantRepo.save(tenant);
+    }
+
+    async getSequence(id: string) {
+        const tenant = await this.tenantRepo.findOne({
+            where: { id },
+            select: ['customer_sequence']
+        });
+        return tenant?.customer_sequence || [];
+    }
 }
