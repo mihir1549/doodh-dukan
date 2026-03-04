@@ -93,7 +93,7 @@ export class TenantsService {
     async getSequence(id: string) {
         const tenant = await this.tenantRepo.findOne({
             where: { id },
-            select: ['customer_sequence']
+            select: ['id', 'customer_sequence']
         });
         return tenant?.customer_sequence || [];
     }
