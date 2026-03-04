@@ -83,15 +83,21 @@ export default function AddEntry() {
             .map(c => Number(c.customer_number))
             .filter(num => !isNaN(num) && num > 0);
 
-        console.log("Saving full customer sequence to backend:", fullSequence);
+        console.log(`[AddEntry] SAVING sequence: ${fullSequence.length} items. Full payload snapshot:`, fullSequence.slice(0, 5));
+
+        if (fullSequence.length === 0 && allCustomers.length > 0) {
+            console.error("[AddEntry] ABORTING save! Sequence generated was empty despite having customers.");
+            return;
+        }
 
         customerApi.saveSequence(fullSequence)
-            .then(() => {
+            .then((res) => {
+                console.log("[AddEntry] SAVE successful. Response:", res.data);
                 setShowSaveToast(true);
                 setTimeout(() => setShowSaveToast(false), 2000);
             })
             .catch(err => {
-                console.error("Failed to save sequence to backend:", err);
+                console.error("[AddEntry] SAVE failed:", err);
                 setError("Failed to save order to server");
             });
     };
