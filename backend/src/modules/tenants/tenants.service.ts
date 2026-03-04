@@ -85,19 +85,25 @@ export class TenantsService {
 
     async updateSequence(id: string, sequence: string[]) {
         console.log(`[TenantsService] UPDATING sequence for tenant ID: "${id}"`);
-        console.log(`[TenantsService] Sequence payload:`, JSON.stringify(sequence));
+        console.log(`[TenantsService] Count: ${sequence.length}. Payload snapshot:`, sequence.slice(0, 3));
 
         try {
-            // Direct PostgreSQL query to be 100% sure
-            await this.dataSource.query(
-                'UPDATE tenants SET customer_sequence = $1 WHERE id = $2',
-                [JSON.stringify(sequence), id]
-            );
+            // Using repo.update is safer for jsonb handling in TypeORM
+            const result = await this.tenantRepo.update(id, {
+                customer_sequence: sequence
+            });
 
-            console.log(`[TenantsService] UPDATE successful`);
+            console.log(`[TenantsService] UPDATE result:`, result.affected, "rows affected");
 
-            // Return updated tenant
-            return this.tenantRepo.findOne({ where: { id } });
+            if (result.affected === 0) {
+                console.error(`[TenantsService] FAILED to update - Tenant ID not found or no change: ${id}`);
+            }
+
+            // Verify and return
+            const updated = await this.tenantRepo.findOne({ where: { id } });
+            console.log(`[TenantsService] VERIFIED DB state: ${updated?.customer_sequence?.length || 0} items`);
+
+            return updated;
         } catch (err) {
             console.error(`[TenantsService] DATABASE ERROR:`, err);
             throw err;

@@ -85,7 +85,13 @@ export default function AddEntry() {
     };
 
     const handleReorder = (newState: any[]) => {
+        // GUARDS to prevent accidental data loss:
         if (search) return; // don't save sequence if user is actively searching
+        if (!hasLoadedRef.current) return; // don't save if we haven't even finished the initial load
+        if (allCustomers.length > 0 && newState.length === 0) {
+            console.warn("[AddEntry] Guarded against saving empty sequence while customers exist.");
+            return;
+        }
 
         // 1. Synchronously update the state for instant UI feedback
         const sliceIds = new Set(newState.map(c => c.id));
