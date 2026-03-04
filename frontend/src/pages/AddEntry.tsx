@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { ReactSortable } from 'react-sortablejs';
 import { customerApi, productApi, entryApi } from '../api';
 
+const SCROLL_CONTAINER_ID = 'customer-list-scroll-container';
+
 export default function AddEntry() {
     const navigate = useNavigate();
     const [step, setStep] = useState(1);
@@ -32,10 +34,10 @@ export default function AddEntry() {
             const res = await customerApi.list('', 1, 10000); // Load all customers initially
             const newData = res.data?.data?.data || [];
 
-            // Custom arrangement: load local storage sequence (v3 uses UUID 'id')
+            // Custom arrangement: load local storage sequence (v5 uses UUID 'id')
             let savedSeq: string[] = [];
             try {
-                const raw = localStorage.getItem('myCustomerSequence_v3');
+                const raw = localStorage.getItem('myCustomerSequence_v5');
                 if (raw) {
                     const parsed = JSON.parse(raw);
                     if (Array.isArray(parsed)) {
@@ -73,7 +75,7 @@ export default function AddEntry() {
 
         // Extract the unique IDs in their new order
         const newSequence = newState.map(c => String(c.id));
-        localStorage.setItem('myCustomerSequence_v3', JSON.stringify(newSequence));
+        localStorage.setItem('myCustomerSequence_v5', JSON.stringify(newSequence));
 
         // Reconstruct allCustomers: reordered slice followed by the rest
         const topIds = new Set(newSequence);
@@ -83,16 +85,16 @@ export default function AddEntry() {
 
     const resetOrder = () => {
         if (window.confirm("Restore default customer ordering?")) {
-            localStorage.removeItem('myCustomerSequence_v3');
+            localStorage.removeItem('myCustomerSequence_v5');
             loadAllCustomers();
         }
     };
 
     const handlePin = (customer: any) => {
         // Move this customer to the very top of the sequence
-        const savedSeq: string[] = JSON.parse(localStorage.getItem('myCustomerSequence_v3') || '[]').map(String);
+        const savedSeq: string[] = JSON.parse(localStorage.getItem('myCustomerSequence_v5') || '[]').map(String);
         const newSeq = [String(customer.id), ...savedSeq.filter((id: string) => id !== String(customer.id))];
-        localStorage.setItem('myCustomerSequence_v3', JSON.stringify(newSeq));
+        localStorage.setItem('myCustomerSequence_v5', JSON.stringify(newSeq));
 
         // Clear search to show the customer at the top
         setSearch('');
@@ -100,6 +102,14 @@ export default function AddEntry() {
 
         // Reload/Re-sort customers
         loadAllCustomers();
+
+        // Scroll the container to top after pinning so user sees the result
+        setTimeout(() => {
+            const container = document.getElementById(SCROLL_CONTAINER_ID);
+            if (container) {
+                container.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }, 100);
     };
 
     const rawFiltered = allCustomers.filter(c => {
@@ -197,14 +207,20 @@ export default function AddEntry() {
                         />
                     </div>
                     <div
+                        id={SCROLL_CONTAINER_ID}
                         style={{ maxHeight: '60vh', overflowY: 'auto', paddingRight: '4px' }}
                     >
                         <ReactSortable
                             list={filteredCustomers}
                             setList={handleReorder}
-                            animation={200}
+                            animation={150} // slightly faster for a snappier feel
                             handle=".drag-handle"
                             disabled={search.length > 0}
+                            scroll={true}
+                            forceFallback={true}
+                            scrollSensitivity={120} // even more sensitive to dragging near edges
+                            scrollSpeed={40}       // faster scroll once triggered
+                            bubbleScroll={true}
                         >
                             {filteredCustomers.map((c) => (
                                 <div
