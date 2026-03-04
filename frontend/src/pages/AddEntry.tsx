@@ -62,28 +62,25 @@ export default function AddEntry() {
         }
     };
 
-    const handleReorder = async (newState: any[]) => {
+    const handleReorder = (newState: any[]) => {
         if (search) return; // don't save sequence if user is actively searching
 
-        // Extract the stable customer numbers in their new order
+        // 1. Synchronously update the state for instant UI feedback
         const newSequence = newState.map(c => Number(c.customer_number));
+        const topNums = new Set(newSequence.map(String));
+        const rest = allCustomers.filter(c => !topNums.has(String(c.customer_number || '')));
+        setAllCustomers([...newState, ...rest]);
 
-        // Save to backend immediately
-        try {
-            await customerApi.saveSequence(newSequence);
-
-            // Reconstruct allCustomers: reordered slice followed by the rest
-            const topNums = new Set(newSequence.map(String));
-            const rest = allCustomers.filter(c => !topNums.has(String(c.customer_number || '')));
-            setAllCustomers([...newState, ...rest]);
-
-            // Show save feedback
-            setShowSaveToast(true);
-            setTimeout(() => setShowSaveToast(false), 2000);
-        } catch (err) {
-            console.error("Failed to save sequence to backend:", err);
-            setError("Failed to save order to server");
-        }
+        // 2. Fire and forget the backend update
+        customerApi.saveSequence(newSequence)
+            .then(() => {
+                setShowSaveToast(true);
+                setTimeout(() => setShowSaveToast(false), 2000);
+            })
+            .catch(err => {
+                console.error("Failed to save sequence to backend:", err);
+                setError("Failed to save order to server");
+            });
     };
 
     const resetOrder = async () => {
