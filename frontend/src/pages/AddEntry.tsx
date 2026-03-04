@@ -32,10 +32,10 @@ export default function AddEntry() {
             const res = await customerApi.list('', 1, 10000); // Load all customers initially
             const newData = res.data?.data?.data || [];
 
-            // Custom arrangement: load local storage sequence
+            // Custom arrangement: load local storage sequence (v3 uses UUID 'id')
             let savedSeq: string[] = [];
             try {
-                const raw = localStorage.getItem('myCustomerSequence');
+                const raw = localStorage.getItem('myCustomerSequence_v3');
                 if (raw) {
                     const parsed = JSON.parse(raw);
                     if (Array.isArray(parsed)) {
@@ -43,17 +43,12 @@ export default function AddEntry() {
                     }
                 }
             } catch (e) {
-                console.error("Failed to parse customer sequence:", e);
                 savedSeq = [];
             }
 
-            console.log("Loading customers with sequence:", savedSeq.length > 0 ? savedSeq.join(',') : 'None');
-
             newData.sort((a: any, b: any) => {
-                const valA = String(a.customer_number);
-                const valB = String(b.customer_number);
-                const indexA = savedSeq.indexOf(valA);
-                const indexB = savedSeq.indexOf(valB);
+                const indexA = savedSeq.indexOf(String(a.id));
+                const indexB = savedSeq.indexOf(String(b.id));
 
                 // If both are in the sequence, sort by their order in sequence
                 if (indexA !== -1 && indexB !== -1) return indexA - indexB;
@@ -76,22 +71,28 @@ export default function AddEntry() {
     const handleReorder = (newState: any[]) => {
         if (search) return; // don't save sequence if user is actively searching
 
-        // Extract the customer numbers in their new order as strings
-        const newSequence = newState.map(c => String(c.customer_number));
-        localStorage.setItem('myCustomerSequence', JSON.stringify(newSequence));
-        localStorage.setItem('myCustomerSequence_Timestamp', new Date().toISOString());
+        // Extract the unique IDs in their new order
+        const newSequence = newState.map(c => String(c.id));
+        localStorage.setItem('myCustomerSequence_v3', JSON.stringify(newSequence));
 
-        // Update allCustomers by taking the reordered items and appending the rest
+        // Reconstruct allCustomers: reordered slice followed by the rest
         const topIds = new Set(newSequence);
-        const rest = allCustomers.filter(c => !topIds.has(String(c.customer_number)));
+        const rest = allCustomers.filter(c => !topIds.has(String(c.id)));
         setAllCustomers([...newState, ...rest]);
+    };
+
+    const resetOrder = () => {
+        if (window.confirm("Restore default customer ordering?")) {
+            localStorage.removeItem('myCustomerSequence_v3');
+            loadAllCustomers();
+        }
     };
 
     const handlePin = (customer: any) => {
         // Move this customer to the very top of the sequence
-        const savedSeq: string[] = JSON.parse(localStorage.getItem('myCustomerSequence') || '[]').map(String);
-        const newSeq = [String(customer.customer_number), ...savedSeq.filter((num: string) => num !== String(customer.customer_number))];
-        localStorage.setItem('myCustomerSequence', JSON.stringify(newSeq));
+        const savedSeq: string[] = JSON.parse(localStorage.getItem('myCustomerSequence_v3') || '[]').map(String);
+        const newSeq = [String(customer.id), ...savedSeq.filter((id: string) => id !== String(customer.id))];
+        localStorage.setItem('myCustomerSequence_v3', JSON.stringify(newSeq));
 
         // Clear search to show the customer at the top
         setSearch('');
@@ -177,7 +178,15 @@ export default function AddEntry() {
             {/* Step 1: Select Customer */}
             {step === 1 && (
                 <div>
-                    <h3 style={{ marginBottom: '16px', color: 'var(--text-secondary)' }}>Select Customer</h3>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                        <h3 style={{ color: 'var(--text-secondary)' }}>Select Customer</h3>
+                        <button
+                            onClick={resetOrder}
+                            style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: '0.85rem', cursor: 'pointer' }}
+                        >
+                            🔄 Reset Order
+                        </button>
+                    </div>
                     <div className="search-box">
                         <span className="search-icon">🔍</span>
                         <input
@@ -193,14 +202,9 @@ export default function AddEntry() {
                         <ReactSortable
                             list={filteredCustomers}
                             setList={handleReorder}
-                            animation={150}
+                            animation={200}
                             handle=".drag-handle"
                             disabled={search.length > 0}
-                            ghostClass="sortable-ghost"
-                            chosenClass="sortable-chosen"
-                            dragClass="sortable-drag"
-                            delay={50} // slight delay for touch to allow scrolling
-                            delayOnTouchOnly={true}
                         >
                             {filteredCustomers.map((c) => (
                                 <div

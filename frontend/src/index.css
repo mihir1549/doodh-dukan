@@ -922,24 +922,9 @@ textarea:focus {
   border-radius: var(--radius-md);
 }
 
-/* ========= DRAG & DROP UI ========= */
-.sortable-ghost {
-  opacity: 0.3;
-  background: var(--accent-light) !important;
-  border: 2px dashed var(--accent) !important;
-}
-
-.sortable-chosen {
-  background: var(--bg-card-hover) !important;
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
-  z-index: 1000;
-}
-
-.sortable-drag {
-  opacity: 0.9;
-  transform: scale(1.02);
-}
-
-.customer-item.sortable-chosen {
-  transition: none !important;
+/* ========= RESPONSIVE ========= */
+@media (min-width: 768px) {
+  .app-container {
+    max-width: 600px;
+  }
 }
