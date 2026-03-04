@@ -74,7 +74,12 @@ export default function AddEntry() {
         setAllCustomers(fullNewList);
 
         // 2. Fire and forget the backend update of the FULL sequence
-        const fullSequence = fullNewList.map(c => Number(c.customer_number));
+        const fullSequence = fullNewList
+            .map(c => Number(c.customer_number))
+            .filter(num => !isNaN(num) && num > 0);
+
+        console.log("Saving full customer sequence to backend:", fullSequence);
+
         customerApi.saveSequence(fullSequence)
             .then(() => {
                 setShowSaveToast(true);
@@ -90,7 +95,8 @@ export default function AddEntry() {
         if (window.confirm("Restore default customer ordering?")) {
             try {
                 await customerApi.saveSequence([]);
-                loadAllCustomers();
+                // Small delay to let DB update finish before reload
+                setTimeout(() => loadAllCustomers(), 300);
             } catch (err) {
                 setError("Failed to reset order");
             }

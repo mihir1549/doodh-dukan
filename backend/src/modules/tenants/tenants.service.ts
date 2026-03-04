@@ -84,22 +84,37 @@ export class TenantsService {
     }
 
     async updateSequence(id: string, sequence: number[]) {
-        console.log(`[TenantsService] UPDATING sequence for tenant: ${id}, count: ${sequence.length}`);
-        const tenant = await this.tenantRepo.findOne({ where: { id } });
-        if (!tenant) throw new ConflictException('Shop not found');
+        console.log(`[TenantsService] UPDATING sequence for tenant ID: "${id}"`);
+        console.log(`[TenantsService] Sequence payload:`, JSON.stringify(sequence));
 
-        tenant.customer_sequence = sequence;
-        const saved = await this.tenantRepo.save(tenant);
-        console.log(`[TenantsService] SAVE complete. Sequence in saved object: ${saved.customer_sequence?.length || 0} items`);
-        return saved;
+        try {
+            // Use query builder for a direct, non-magic update
+            const result = await this.tenantRepo.createQueryBuilder()
+                .update(Tenant)
+                .set({ customer_sequence: sequence })
+                .where("id = :id", { id })
+                .execute();
+
+            console.log(`[TenantsService] UPDATE result:`, result.affected, "rows affected");
+
+            // Verify immediately
+            const check = await this.tenantRepo.findOne({ where: { id } });
+            console.log(`[TenantsService] VERIFY after save - count in DB:`, check?.customer_sequence?.length || 0);
+
+            return check;
+        } catch (err) {
+            console.error(`[TenantsService] CRITICAL ERROR updating sequence:`, err);
+            throw err;
+        }
     }
 
     async getSequence(id: string) {
+        console.log(`[TenantsService] FETCHING sequence for tenant ID: "${id}"`);
         const tenant = await this.tenantRepo.findOne({
             where: { id }
         });
         const seq = tenant?.customer_sequence || [];
-        console.log(`[TenantsService] FETCHED sequence for tenant: ${id}, found: ${seq.length} items`);
+        console.log(`[TenantsService] FETCH complete - found: ${seq.length} items`);
         return seq;
     }
 }
