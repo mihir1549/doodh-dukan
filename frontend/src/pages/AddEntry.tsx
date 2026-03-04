@@ -33,11 +33,27 @@ export default function AddEntry() {
             const newData = res.data?.data?.data || [];
 
             // Custom arrangement: load local storage sequence
-            const savedSeq = JSON.parse(localStorage.getItem('myCustomerSequence') || '[]').map(String);
+            let savedSeq: string[] = [];
+            try {
+                const raw = localStorage.getItem('myCustomerSequence');
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (Array.isArray(parsed)) {
+                        savedSeq = parsed.map(String);
+                    }
+                }
+            } catch (e) {
+                console.error("Failed to parse customer sequence:", e);
+                savedSeq = [];
+            }
+
+            console.log("Loading customers with sequence:", savedSeq.length > 0 ? savedSeq.join(',') : 'None');
 
             newData.sort((a: any, b: any) => {
-                const indexA = savedSeq.indexOf(String(a.customer_number));
-                const indexB = savedSeq.indexOf(String(b.customer_number));
+                const valA = String(a.customer_number);
+                const valB = String(b.customer_number);
+                const indexA = savedSeq.indexOf(valA);
+                const indexB = savedSeq.indexOf(valB);
 
                 // If both are in the sequence, sort by their order in sequence
                 if (indexA !== -1 && indexB !== -1) return indexA - indexB;
@@ -185,6 +201,10 @@ export default function AddEntry() {
                             animation={200}
                             handle=".drag-handle"
                             disabled={search.length > 0}
+                            ghostClass="sortable-ghost"
+                            chosenClass="sortable-chosen"
+                            dragClass="sortable-drag"
+                            forceFallback={true} // better handling on some mobile browsers
                         >
                             {filteredCustomers.map((c) => (
                                 <div
