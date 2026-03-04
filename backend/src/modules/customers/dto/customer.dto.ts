@@ -1,4 +1,10 @@
-import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsArray, IsNumber } from 'class-validator';
+
+export class UpdateSequenceDto {
+    @IsArray()
+    @IsNumber({}, { each: true })
+    sequence: number[];
+}
 
 export class CreateCustomerDto {
     @IsString()

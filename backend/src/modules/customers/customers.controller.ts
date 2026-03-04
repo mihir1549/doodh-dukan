@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { CustomersService } from './customers.service';
-import { CreateCustomerDto, UpdateCustomerDto } from './dto/customer.dto';
+import { CreateCustomerDto, UpdateCustomerDto, UpdateSequenceDto } from './dto/customer.dto';
 import { TenantId, Roles } from '../../common/decorators';
 import { RolesGuard } from '../../common/guards';
 import { UserRole } from '../users/user.entity';
@@ -68,8 +68,8 @@ export class CustomersController {
     @Roles(UserRole.OWNER, UserRole.SHOP_STAFF)
     async updateSequence(
         @TenantId() tenantId: string,
-        @Body('sequence') sequence: number[],
+        @Body() dto: UpdateSequenceDto,
     ) {
-        return this.customersService.updateSequence(tenantId, sequence);
+        return this.customersService.updateSequence(tenantId, dto.sequence);
     }
 }
