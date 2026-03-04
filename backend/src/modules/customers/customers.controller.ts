@@ -48,6 +48,15 @@ export class CustomersController {
         return this.customersService.create(tenantId, dto);
     }
 
+    @Patch('sequence')
+    @Roles(UserRole.OWNER, UserRole.SHOP_STAFF)
+    async updateSequence(
+        @TenantId() tenantId: string,
+        @Body() dto: UpdateSequenceDto,
+    ) {
+        return this.customersService.updateSequence(tenantId, dto.sequence);
+    }
+
     @Patch(':id')
     @Roles(UserRole.OWNER, UserRole.SHOP_STAFF)
     async update(
@@ -64,12 +73,4 @@ export class CustomersController {
         return this.customersService.deactivate(tenantId, id);
     }
 
-    @Patch('sequence')
-    @Roles(UserRole.OWNER, UserRole.SHOP_STAFF)
-    async updateSequence(
-        @TenantId() tenantId: string,
-        @Body() dto: UpdateSequenceDto,
-    ) {
-        return this.customersService.updateSequence(tenantId, dto.sequence);
-    }
 }
