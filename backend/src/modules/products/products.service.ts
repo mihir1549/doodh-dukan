@@ -20,23 +20,17 @@ export class ProductsService {
     ) { }
 
     async findAll(tenantId: string) {
-        const products = await this.productRepo.find({
-            where: { tenant_id: tenantId, is_active: true },
-            order: { name: 'ASC' },
-        });
+        const products = await this.productRepo.createQueryBuilder('p')
+            .leftJoinAndSelect('p.prices', 'price', 'price.effective_to IS NULL')
+            .where('p.tenant_id = :tenantId', { tenantId })
+            .andWhere('p.is_active = true')
+            .orderBy('p.name', 'ASC')
+            .getMany();
 
-        // Attach current price to each product
-        const result = await Promise.all(
-            products.map(async (p) => {
-                const currentPrice = await this.getActivePrice(tenantId, p.id);
-                return {
-                    ...p,
-                    current_price: currentPrice?.price_per_unit || null,
-                };
-            }),
-        );
-
-        return result;
+        return products.map(p => ({
+            ...p,
+            current_price: p.prices?.[0]?.price_per_unit || null,
+        }));
     }
 
     async findOne(tenantId: string, id: string) {

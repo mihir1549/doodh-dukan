@@ -111,12 +111,10 @@ export class TenantsService {
     }
 
     async getSequence(id: string) {
-        console.log(`[TenantsService] FETCHING sequence for tenant ID: "${id}"`);
         const tenant = await this.tenantRepo.findOne({
-            where: { id }
+            where: { id },
+            select: ['id', 'customer_sequence'] // Only fetch what's needed
         });
-        const seq = tenant?.customer_sequence || [];
-        console.log(`[TenantsService] FETCH complete - found: ${seq.length} items`);
-        return seq;
+        return tenant?.customer_sequence || [];
     }
 }
