@@ -73,6 +73,7 @@ export default function AddEntry() {
             .then((res) => {
                 console.log("[AddEntry] SAVE successful. Response:", res.data);
                 setShowSaveToast(true);
+                setOrderDirty(false);
                 setTimeout(() => setShowSaveToast(false), 2000);
             })
             .catch(err => {
