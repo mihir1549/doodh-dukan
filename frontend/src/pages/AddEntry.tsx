@@ -276,13 +276,17 @@ export default function AddEntry() {
                         <ReactSortable
                             list={filteredCustomers}
                             setList={handleReorder}
-                            animation={150}
+                            animation={250}
                             handle=".drag-handle"
                             disabled={search.length > 0}
                             scroll={true}
                             forceFallback={true}
-                            scrollSensitivity={150} // high sensitivity for better scrolling
-                            scrollSpeed={25}        // fast but controlled scroll
+                            ghostClass="sortable-ghost"
+                            chosenClass="sortable-chosen"
+                            dragClass="sortable-drag"
+                            fallbackClass="sortable-drag"
+                            scrollSensitivity={80}
+                            scrollSpeed={10}
                             bubbleScroll={true}
                         >
                             {filteredCustomers.map((c) => (
