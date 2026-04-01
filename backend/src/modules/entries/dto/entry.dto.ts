@@ -1,4 +1,14 @@
-import { IsString, IsNotEmpty, IsNumber, IsOptional, IsDateString, IsEnum } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+    IsString,
+    IsNotEmpty,
+    IsNumber,
+    IsOptional,
+    IsDateString,
+    IsEnum,
+    IsBoolean,
+    IsPositive,
+} from 'class-validator';
 import { EntrySlot } from '../daily-entry.entity';
 
 export class CreateEntryDto {
@@ -11,14 +21,29 @@ export class CreateEntryDto {
     product_id: string;
 
     @IsDateString()
-    @IsNotEmpty()
-    entry_date: string;
+    @IsOptional()
+    entry_date?: string;
 
+    @Type(() => Number)
     @IsNumber()
     @IsNotEmpty()
+    @IsPositive()
     quantity: number;
 
     @IsEnum(EntrySlot)
     @IsOptional()
     entry_slot?: EntrySlot;
+
+    @Type(() => Boolean)
+    @IsBoolean()
+    @IsOptional()
+    force_create?: boolean;
+}
+
+export class UpdateEntryDto {
+    @Type(() => Number)
+    @IsNumber()
+    @IsNotEmpty()
+    @IsPositive()
+    quantity: number;
 }

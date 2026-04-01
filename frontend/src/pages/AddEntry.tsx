@@ -2,11 +2,29 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ReactSortable } from 'react-sortablejs';
 import { customerApi, productApi, entryApi } from '../api';
+import { useAuth } from '../AuthContext';
 
 const SCROLL_CONTAINER_ID = 'customer-list-scroll-container';
 
+const getTodayDateValue = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
+const getErrorMessage = (err: any) => {
+    const message = err?.response?.data?.message;
+    if (Array.isArray(message)) {
+        return message.join(', ');
+    }
+    return message || 'Failed to save entry';
+};
+
 export default function AddEntry() {
     const navigate = useNavigate();
+    const { user } = useAuth();
     const [step, setStep] = useState(1);
     const [allCustomers, setAllCustomers] = useState<any[]>([]);
     const [products, setProducts] = useState<any[]>([]);
@@ -17,12 +35,22 @@ export default function AddEntry() {
     const [qtyStr, setQtyStr] = useState('');  // for loose milk numpad
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-    const [success, setSuccess] = useState(false);
+    const [successMessage, setSuccessMessage] = useState('');
     const [displayLimit, setDisplayLimit] = useState(100);
     const [entrySlot] = useState<'MORNING' | 'EVENING' | 'EXTRA'>('MORNING');
     const [showSaveToast, setShowSaveToast] = useState(false);
+    const today = getTodayDateValue();
+    const [entryDate, setEntryDate] = useState(today);
+    const [duplicateState, setDuplicateState] = useState<null | {
+        existingEntry: any;
+        canForceCreate: boolean;
+        canEditExisting: boolean;
+        editMode: boolean;
+        editQuantity: string;
+    }>(null);
 
-    const today = new Date().toISOString().split('T')[0];
+    const sourceLabel = user?.role === 'DELIVERY' ? 'DELIVERY' : 'SHOP';
+    const isBackdated = entryDate < today;
 
     useEffect(() => {
         loadProducts();
@@ -157,23 +185,63 @@ export default function AddEntry() {
         setSearch(val);
     };
 
+    const handleDateChange = (value: string) => {
+        const nextDate = value && value <= today ? value : today;
+        setEntryDate(nextDate);
+        setDuplicateState(null);
+        setError('');
+    };
 
-
-    const handleSubmit = async () => {
+    const handleSubmit = async (options?: { forceCreate?: boolean }) => {
         setLoading(true);
         setError('');
         try {
             await entryApi.create({
                 customer_id: selectedCustomer.id,
                 product_id: selectedProduct.id,
-                entry_date: today,
+                entry_date: entryDate,
                 quantity,
                 entry_slot: entrySlot,
+                force_create: options?.forceCreate,
             });
-            setSuccess(true);
-            setTimeout(() => navigate('/today'), 1500);
+            setDuplicateState(null);
+            setSuccessMessage(
+                isBackdated
+                    ? `Backdated entry saved for ${entryDate}.`
+                    : 'Entry saved for today.',
+            );
+            setTimeout(() => navigate(isBackdated ? '/' : '/today'), 1500);
         } catch (err: any) {
-            setError(err.response?.data?.message || 'Failed to save entry');
+            if (err.response?.status === 409 && err.response?.data?.code === 'DUPLICATE_ENTRY') {
+                setDuplicateState({
+                    existingEntry: err.response.data.duplicate,
+                    canForceCreate: Boolean(err.response.data.actions?.can_force_create),
+                    canEditExisting: Boolean(err.response.data.actions?.can_edit_existing),
+                    editMode: false,
+                    editQuantity: String(quantity),
+                });
+            } else {
+                setError(getErrorMessage(err));
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleUpdateDuplicate = async () => {
+        if (!duplicateState) return;
+
+        setLoading(true);
+        setError('');
+        try {
+            await entryApi.update(duplicateState.existingEntry.id, {
+                quantity: Number(duplicateState.editQuantity),
+            });
+            setDuplicateState(null);
+            setSuccessMessage(`Existing entry updated for ${entryDate}.`);
+            setTimeout(() => navigate(isBackdated ? '/' : '/today'), 1500);
+        } catch (err: any) {
+            setError(getErrorMessage(err));
         } finally {
             setLoading(false);
         }
@@ -183,12 +251,12 @@ export default function AddEntry() {
         ? (quantity * Number(selectedProduct.current_price || 0)).toFixed(2)
         : '0.00';
 
-    if (success) {
+    if (successMessage) {
         return (
             <div className="page" style={{ textAlign: 'center', paddingTop: '80px' }}>
                 <div style={{ fontSize: '4rem', marginBottom: '16px' }}>✅</div>
                 <h2 style={{ color: 'var(--success)', marginBottom: '8px' }}>Entry Saved!</h2>
-                <p style={{ color: 'var(--text-secondary)' }}>Redirecting to today's entries...</p>
+                <p style={{ color: 'var(--text-secondary)' }}>{successMessage}</p>
             </div>
         );
     }
@@ -540,7 +608,27 @@ export default function AddEntry() {
                         </div>
                         <div className="confirm-row">
                             <span className="confirm-label">Date</span>
-                            <span className="confirm-value">{today}</span>
+                            <span className="confirm-value">
+                                <input
+                                    type="date"
+                                    value={entryDate}
+                                    max={today}
+                                    onChange={(e) => handleDateChange(e.target.value)}
+                                    style={{
+                                        padding: '8px 10px',
+                                        borderRadius: '10px',
+                                        border: '1px solid var(--border)',
+                                        background: 'var(--bg-page)',
+                                        color: 'var(--text-primary)',
+                                        fontSize: '0.95rem',
+                                        minWidth: '150px',
+                                    }}
+                                />
+                            </span>
+                        </div>
+                        <div className="confirm-row">
+                            <span className="confirm-label">Source</span>
+                            <span className="confirm-value">{sourceLabel}</span>
                         </div>
                         <div className="confirm-row" style={{ borderBottom: 'none' }}>
                             <span className="confirm-label" style={{ fontSize: '1.1rem' }}>Total</span>
@@ -548,15 +636,153 @@ export default function AddEntry() {
                         </div>
                     </div>
 
+                    {isBackdated && (
+                        <div
+                            style={{
+                                marginTop: '12px',
+                                padding: '12px 14px',
+                                borderRadius: '12px',
+                                background: 'rgba(245, 158, 11, 0.12)',
+                                border: '1px solid rgba(245, 158, 11, 0.35)',
+                                color: '#92400e',
+                                fontSize: '0.92rem',
+                                fontWeight: 600,
+                            }}
+                        >
+                            You are adding an entry for a previous date.
+                        </div>
+                    )}
+
                     {error && <div className="error-msg">{error}</div>}
 
                     <button
                         className="btn btn-success btn-full btn-lg"
-                        onClick={handleSubmit}
+                        onClick={() => handleSubmit()}
                         disabled={loading}
                     >
                         {loading ? '⏳ Saving...' : '✅ Save Entry'}
                     </button>
+                </div>
+            )}
+
+            {duplicateState && (
+                <div
+                    style={{
+                        position: 'fixed',
+                        inset: 0,
+                        background: 'rgba(15, 23, 42, 0.65)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '20px',
+                        zIndex: 1000,
+                    }}
+                    onClick={() => setDuplicateState(null)}
+                >
+                    <div
+                        className="card"
+                        style={{ width: '100%', maxWidth: '420px', padding: '24px' }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <h3 style={{ marginBottom: '12px' }}>Duplicate Entry Found</h3>
+                        <p style={{ color: 'var(--text-secondary)', marginBottom: '16px', fontSize: '0.92rem' }}>
+                            A matching entry already exists for this customer, product, date, and source.
+                        </p>
+
+                        <div
+                            style={{
+                                background: 'var(--bg-page)',
+                                border: '1px solid var(--border)',
+                                borderRadius: '12px',
+                                padding: '12px',
+                                marginBottom: '16px',
+                                fontSize: '0.92rem',
+                            }}
+                        >
+                            <div>Existing quantity: {duplicateState.existingEntry.quantity} {selectedProduct?.unit}</div>
+                            <div>Date: {duplicateState.existingEntry.entry_date}</div>
+                            <div>Source: {duplicateState.existingEntry.source}</div>
+                        </div>
+
+                        {!duplicateState.editMode ? (
+                            <>
+                                <div style={{ display: 'grid', gap: '10px' }}>
+                                    <button
+                                        className="btn btn-outline btn-full"
+                                        onClick={() => setDuplicateState(null)}
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        className="btn btn-primary btn-full"
+                                        onClick={() =>
+                                            setDuplicateState((current) =>
+                                                current
+                                                    ? { ...current, editMode: true }
+                                                    : current,
+                                            )
+                                        }
+                                        disabled={!duplicateState.canEditExisting}
+                                    >
+                                        Edit Existing Entry
+                                    </button>
+                                    <button
+                                        className="btn btn-success btn-full"
+                                        onClick={() => handleSubmit({ forceCreate: true })}
+                                        disabled={loading || !duplicateState.canForceCreate}
+                                    >
+                                        Create Anyway
+                                    </button>
+                                </div>
+
+                                {!duplicateState.canEditExisting && (
+                                    <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '12px' }}>
+                                        This entry can only be edited by the user who originally created it.
+                                    </p>
+                                )}
+                            </>
+                        ) : (
+                            <>
+                                <div className="form-group">
+                                    <label>Updated quantity</label>
+                                    <input
+                                        type="number"
+                                        min="0.001"
+                                        step="0.001"
+                                        value={duplicateState.editQuantity}
+                                        onChange={(e) =>
+                                            setDuplicateState((current) =>
+                                                current
+                                                    ? { ...current, editQuantity: e.target.value }
+                                                    : current,
+                                            )
+                                        }
+                                    />
+                                </div>
+                                <div style={{ display: 'grid', gap: '10px' }}>
+                                    <button
+                                        className="btn btn-success btn-full"
+                                        onClick={handleUpdateDuplicate}
+                                        disabled={loading || Number(duplicateState.editQuantity) <= 0}
+                                    >
+                                        Save Existing Entry
+                                    </button>
+                                    <button
+                                        className="btn btn-outline btn-full"
+                                        onClick={() =>
+                                            setDuplicateState((current) =>
+                                                current
+                                                    ? { ...current, editMode: false }
+                                                    : current,
+                                            )
+                                        }
+                                    >
+                                        Back
+                                    </button>
+                                </div>
+                            </>
+                        )}
+                    </div>
                 </div>
             )}
         </div>

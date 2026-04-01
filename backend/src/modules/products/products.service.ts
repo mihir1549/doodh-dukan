@@ -161,6 +161,24 @@ export class ProductsService {
         });
     }
 
+    async getPriceForDate(
+        tenantId: string,
+        productId: string,
+        entryDate: string,
+    ): Promise<ProductPrice | null> {
+        return this.priceRepo
+            .createQueryBuilder('price')
+            .where('price.tenant_id = :tenantId', { tenantId })
+            .andWhere('price.product_id = :productId', { productId })
+            .andWhere('price.effective_from <= :entryDate', { entryDate })
+            .andWhere(
+                '(price.effective_to IS NULL OR price.effective_to > :entryDate)',
+                { entryDate },
+            )
+            .orderBy('price.effective_from', 'DESC')
+            .getOne();
+    }
+
     async deactivate(tenantId: string, id: string) {
         const product = await this.productRepo.findOne({
             where: { id, tenant_id: tenantId },

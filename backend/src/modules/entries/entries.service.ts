@@ -10,9 +10,12 @@ import { Repository, DataSource } from 'typeorm';
 import { DailyEntry, SourceChannel, EntrySlot } from './daily-entry.entity';
 import { MonthlySummary } from '../summaries/monthly-summary.entity';
 import { ProductsService } from '../products/products.service';
-import { CreateEntryDto } from './dto/entry.dto';
+import { CreateEntryDto, UpdateEntryDto } from './dto/entry.dto';
 import { UserRole } from '../users/user.entity';
-import { getMonthYearFromDate, getCurrentMonthYear } from '../../common/utils/helpers';
+import {
+    getMonthYearFromDate,
+    getTodayDateString,
+} from '../../common/utils/helpers';
 
 @Injectable()
 export class EntriesService {
@@ -25,9 +28,6 @@ export class EntriesService {
         private dataSource: DataSource,
     ) { }
 
-    /**
-     * Determine source_channel from user role (never from user input)
-     */
     private getChannelFromRole(role: string): SourceChannel {
         switch (role) {
             case UserRole.DELIVERY:
@@ -35,10 +35,86 @@ export class EntriesService {
             case UserRole.SHOP_STAFF:
                 return SourceChannel.SHOP;
             case UserRole.OWNER:
-                return SourceChannel.SHOP; // default for owner, can be overridden
+                return SourceChannel.SHOP;
             default:
                 return SourceChannel.SHOP;
         }
+    }
+
+    private getEffectiveEntryDate(entryDate?: string): string {
+        const normalizedDate = entryDate || getTodayDateString();
+        if (normalizedDate > getTodayDateString()) {
+            throw new BadRequestException('Entry date cannot be in the future');
+        }
+
+        return normalizedDate;
+    }
+
+    private canUpdateExistingEntry(
+        entry: DailyEntry,
+        userId: string,
+        userRole: string,
+        source: SourceChannel,
+    ): boolean {
+        if (entry.source !== source) {
+            return false;
+        }
+
+        if (userRole === UserRole.DELIVERY) {
+            return entry.created_by_user_id === userId;
+        }
+
+        return true;
+    }
+
+    private serializeEntry(entry: DailyEntry) {
+        return {
+            id: entry.id,
+            customer_id: entry.customer_id,
+            product_id: entry.product_id,
+            quantity: Number(entry.quantity),
+            unit_price: Number(entry.unit_price),
+            source: entry.source,
+            entry_date: entry.entry_date,
+            created_at: entry.created_at,
+            created_by_user_id: entry.created_by_user_id,
+            entry_slot: entry.entry_slot,
+            line_total: Number(entry.line_total || 0),
+            month_year: entry.month_year,
+        };
+    }
+
+    private toResponseEntry(entry: DailyEntry) {
+        return {
+            ...entry,
+            quantity: Number(entry.quantity),
+            unit_price: Number(entry.unit_price),
+            line_total: Number(entry.line_total || 0),
+            source: entry.source,
+            source_channel: entry.source,
+            created_by_user_id: entry.created_by_user_id,
+            created_by_user: entry.created_by_user,
+            entered_by_user: entry.created_by_user,
+        };
+    }
+
+    private async findDuplicateEntry(
+        tenantId: string,
+        customerId: string,
+        productId: string,
+        entryDate: string,
+        source: SourceChannel,
+    ) {
+        return this.entryRepo.findOne({
+            where: {
+                tenant_id: tenantId,
+                customer_id: customerId,
+                product_id: productId,
+                entry_date: entryDate,
+                source,
+                is_deleted: false,
+            },
+        });
     }
 
     async create(
@@ -47,15 +123,9 @@ export class EntriesService {
         userRole: string,
         dto: CreateEntryDto,
     ) {
-        const monthYear = getMonthYearFromDate(dto.entry_date);
-        const currentMonth = getCurrentMonthYear();
-
-        // Rule 4: Backdating beyond current month — only OWNER allowed
-        if (monthYear !== currentMonth && userRole !== UserRole.OWNER) {
-            throw new ForbiddenException(
-                'Only the shop owner can create entries for past months',
-            );
-        }
+        const entryDate = this.getEffectiveEntryDate(dto.entry_date);
+        const monthYear = getMonthYearFromDate(entryDate);
+        const source = this.getChannelFromRole(userRole);
 
         // Rule 5: Check if month is locked
         const existingSummary = await this.summaryRepo.findOne({
@@ -72,17 +142,45 @@ export class EntriesService {
         }
 
         // Rule 2: Get active price snapshot
-        const activePrice = await this.productsService.getActivePrice(
+        const activePrice = await this.productsService.getPriceForDate(
             tenantId,
             dto.product_id,
+            entryDate,
         );
         if (!activePrice) {
             throw new BadRequestException(
-                'No active price found for this product. Please set a price first.',
+                'No product price is available for the selected entry date.',
             );
         }
 
-        const sourceChannel = this.getChannelFromRole(userRole);
+        const duplicateEntry = await this.findDuplicateEntry(
+            tenantId,
+            dto.customer_id,
+            dto.product_id,
+            entryDate,
+            source,
+        );
+
+        if (duplicateEntry && !dto.force_create) {
+            throw new ConflictException({
+                success: false,
+                statusCode: 409,
+                code: 'DUPLICATE_ENTRY',
+                message:
+                    'An entry already exists for this customer, product, date, and source.',
+                duplicate: this.serializeEntry(duplicateEntry),
+                actions: {
+                    can_force_create: true,
+                    can_edit_existing: this.canUpdateExistingEntry(
+                        duplicateEntry,
+                        userId,
+                        userRole,
+                        source,
+                    ),
+                },
+            });
+        }
+
         const quantity = Number(dto.quantity);
         const unitPrice = Number(activePrice.price_per_unit);
         const lineTotal = Number((quantity * unitPrice).toFixed(2));
@@ -96,13 +194,13 @@ export class EntriesService {
                 tenant_id: tenantId,
                 customer_id: dto.customer_id,
                 product_id: dto.product_id,
-                entry_date: dto.entry_date,
+                entry_date: entryDate,
                 quantity: quantity,
                 unit_price: unitPrice,
                 line_total: lineTotal,
-                source_channel: sourceChannel,
+                source,
                 entry_slot: dto.entry_slot || EntrySlot.MORNING,
-                entered_by: userId,
+                created_by_user_id: userId,
                 month_year: monthYear,
             });
             const savedEntry = await queryRunner.manager.save(entry);
@@ -117,7 +215,71 @@ export class EntriesService {
 
             await queryRunner.commitTransaction();
 
-            return savedEntry;
+            return this.toResponseEntry(savedEntry);
+        } catch (error) {
+            await queryRunner.rollbackTransaction();
+            throw error;
+        } finally {
+            await queryRunner.release();
+        }
+    }
+
+    async update(
+        tenantId: string,
+        entryId: string,
+        userId: string,
+        userRole: string,
+        dto: UpdateEntryDto,
+    ) {
+        const entry = await this.entryRepo.findOne({
+            where: { id: entryId, tenant_id: tenantId, is_deleted: false },
+        });
+
+        if (!entry) {
+            throw new NotFoundException('Entry not found');
+        }
+
+        const source = this.getChannelFromRole(userRole);
+        if (!this.canUpdateExistingEntry(entry, userId, userRole, source)) {
+            throw new ForbiddenException(
+                'You are not allowed to update this entry',
+            );
+        }
+
+        const summary = await this.summaryRepo.findOne({
+            where: {
+                tenant_id: tenantId,
+                customer_id: entry.customer_id,
+                month_year: entry.month_year,
+            },
+        });
+        if (summary?.is_locked) {
+            throw new ConflictException(
+                'This month is locked. No changes allowed.',
+            );
+        }
+
+        const quantity = Number(dto.quantity);
+        entry.quantity = quantity;
+        entry.line_total = Number((quantity * Number(entry.unit_price)).toFixed(2));
+
+        const queryRunner = this.dataSource.createQueryRunner();
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
+
+        try {
+            const updatedEntry = await queryRunner.manager.save(entry);
+
+            await this.recalculateSummary(
+                queryRunner,
+                tenantId,
+                entry.customer_id,
+                entry.month_year,
+            );
+
+            await queryRunner.commitTransaction();
+
+            return this.toResponseEntry(updatedEntry);
         } catch (error) {
             await queryRunner.rollbackTransaction();
             throw error;
@@ -134,24 +296,26 @@ export class EntriesService {
         };
         if (customerId) where.customer_id = customerId;
 
-        return this.entryRepo.find({
+        const entries = await this.entryRepo.find({
             where,
-            relations: ['customer', 'product', 'entered_by_user'],
+            relations: ['customer', 'product', 'created_by_user'],
             order: { created_at: 'DESC' },
         });
+        return entries.map((entry) => this.toResponseEntry(entry));
     }
 
     async findByDateForDelivery(tenantId: string, date: string, userId: string) {
-        return this.entryRepo.find({
+        const entries = await this.entryRepo.find({
             where: {
                 tenant_id: tenantId,
                 entry_date: date,
-                entered_by: userId,
+                created_by_user_id: userId,
                 is_deleted: false,
             },
-            relations: ['customer', 'product'],
+            relations: ['customer', 'product', 'created_by_user'],
             order: { created_at: 'DESC' },
         });
+        return entries.map((entry) => this.toResponseEntry(entry));
     }
 
     async findByMonth(tenantId: string, monthYear: string, customerId?: string) {
@@ -162,11 +326,12 @@ export class EntriesService {
         };
         if (customerId) where.customer_id = customerId;
 
-        return this.entryRepo.find({
+        const entries = await this.entryRepo.find({
             where,
-            relations: ['customer', 'product', 'entered_by_user'],
+            relations: ['customer', 'product', 'created_by_user'],
             order: { entry_date: 'DESC', created_at: 'DESC' },
         });
+        return entries.map((entry) => this.toResponseEntry(entry));
     }
 
     async softDelete(tenantId: string, entryId: string, userId: string) {

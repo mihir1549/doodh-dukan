@@ -53,6 +53,6 @@ export class User {
     @JoinColumn({ name: 'tenant_id' })
     tenant: Tenant;
 
-    @OneToMany(() => DailyEntry, (entry) => entry.entered_by_user)
+    @OneToMany(() => DailyEntry, (entry) => entry.created_by_user)
     entries: DailyEntry[];
 }

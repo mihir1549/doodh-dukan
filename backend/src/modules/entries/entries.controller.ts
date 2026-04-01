@@ -2,6 +2,7 @@ import {
     Controller,
     Get,
     Post,
+    Patch,
     Delete,
     Body,
     Param,
@@ -11,7 +12,7 @@ import {
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { EntriesService } from './entries.service';
-import { CreateEntryDto } from './dto/entry.dto';
+import { CreateEntryDto, UpdateEntryDto } from './dto/entry.dto';
 import { TenantId, CurrentUser, Roles } from '../../common/decorators';
 import { RolesGuard } from '../../common/guards';
 import { UserRole } from '../users/user.entity';
@@ -29,6 +30,23 @@ export class EntriesController {
         @Body() dto: CreateEntryDto,
     ) {
         return this.entriesService.create(tenantId, user.userId, user.role, dto);
+    }
+
+    @Patch(':id')
+    @Roles(UserRole.OWNER, UserRole.SHOP_STAFF, UserRole.DELIVERY)
+    async update(
+        @TenantId() tenantId: string,
+        @CurrentUser() user: any,
+        @Param('id') id: string,
+        @Body() dto: UpdateEntryDto,
+    ) {
+        return this.entriesService.update(
+            tenantId,
+            id,
+            user.userId,
+            user.role,
+            dto,
+        );
     }
 
     @Get()

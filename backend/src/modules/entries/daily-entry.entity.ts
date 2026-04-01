@@ -28,6 +28,7 @@ export enum EntrySlot {
 @Index('idx_entries_customer_month', ['tenant_id', 'customer_id', 'month_year'])
 @Index('idx_entries_date', ['tenant_id', 'entry_date'])
 @Index('idx_entries_slot', ['tenant_id', 'entry_date', 'entry_slot'])
+@Index('idx_entries_duplicate_lookup', ['tenant_id', 'customer_id', 'product_id', 'entry_date', 'source'])
 export class DailyEntry {
     @PrimaryGeneratedColumn('uuid')
     id: string;
@@ -53,14 +54,14 @@ export class DailyEntry {
     @Column({ type: 'numeric', precision: 12, scale: 2, nullable: true })
     line_total: number; // will be computed in service: quantity * unit_price
 
-    @Column({ type: 'varchar', length: 20 })
-    source_channel: SourceChannel;
+    @Column({ name: 'source_channel', type: 'varchar', length: 20 })
+    source: SourceChannel;
 
     @Column({ type: 'varchar', length: 20, default: EntrySlot.MORNING })
     entry_slot: EntrySlot;
 
-    @Column({ type: 'uuid' })
-    entered_by: string;
+    @Column({ name: 'entered_by', type: 'uuid' })
+    created_by_user_id: string;
 
     @Column({ type: 'varchar', length: 7 })
     month_year: string; // 'YYYY-MM' for fast monthly grouping
@@ -91,5 +92,5 @@ export class DailyEntry {
 
     @ManyToOne(() => User, (user) => user.entries)
     @JoinColumn({ name: 'entered_by' })
-    entered_by_user: User;
+    created_by_user: User;
 }

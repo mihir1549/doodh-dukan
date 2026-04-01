@@ -243,7 +243,7 @@ export default function CustomerDetail() {
                                     <div className="entry-info">
                                         <h4>{entry.product?.name || 'Product'}</h4>
                                         <p>{Number(entry.quantity)} {entry.product?.unit} × ₹{Number(entry.unit_price).toFixed(2)}</p>
-                                        {entry.entered_by_user?.name && (
+                                        {entry.created_by_user?.name && (
                                             <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                                                 {entry.source_channel} · by {entry.entered_by_user.name}
                                             </p>

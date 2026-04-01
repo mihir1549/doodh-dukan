@@ -106,10 +106,12 @@ export const entryApi = {
     create: (data: {
         customer_id: string;
         product_id: string;
-        entry_date: string;
+        entry_date?: string;
         quantity: number;
         entry_slot?: string;
+        force_create?: boolean;
     }) => api.post('/entries', data),
+    update: (id: string, data: { quantity: number }) => api.patch(`/entries/${id}`, data),
     delete: (id: string) => api.delete(`/entries/${id}`),
 };
 
