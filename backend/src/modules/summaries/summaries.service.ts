@@ -9,6 +9,7 @@ import { MonthlySummary } from './monthly-summary.entity';
 import { DailyEntry } from '../entries/daily-entry.entity';
 import { Customer } from '../customers/customer.entity';
 import { Product } from '../products/product.entity';
+import { LedgerService } from '../ledger/ledger.service';
 
 @Injectable()
 export class SummariesService {
@@ -22,6 +23,7 @@ export class SummariesService {
         @InjectRepository(Product)
         private productRepo: Repository<Product>,
         private dataSource: DataSource,
+        private ledgerService: LedgerService,
     ) { }
 
     async findByMonth(tenantId: string, monthYear: string, customerId?: string) {
@@ -94,7 +96,18 @@ export class SummariesService {
         summary.is_locked = true;
         summary.locked_at = new Date();
         summary.locked_by = userId;
-        return this.summaryRepo.save(summary);
+        const saved = await this.summaryRepo.save(summary);
+
+        // Post the bill to the customer ledger when a monthly card is locked
+        await this.ledgerService.postMonthlyBill(
+            summary.customer_id,
+            summary.month_year,
+            Number(summary.total_amount),
+            tenantId,
+            userId,
+        );
+
+        return saved;
     }
 
     async unlock(tenantId: string, summaryId: string) {

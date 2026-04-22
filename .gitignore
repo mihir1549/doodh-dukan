@@ -5,3 +5,8 @@ dist/
 *.pdf
 extracted_text.txt
 build_errors.txt
+
+# Local admin/debug scripts — never commit these
+backend/check_shop_data.js
+backend/delete_shop_data.js
+backend/search_tenant.js

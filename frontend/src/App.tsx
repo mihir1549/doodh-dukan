@@ -12,6 +12,8 @@ import Settings from './pages/Settings';
 import Register from './pages/Register';
 import MilkCard from './pages/MilkCard';
 import Shops from './pages/Shops';
+import CustomerLedger from './pages/CustomerLedger';
+import PendingPayments from './pages/PendingPayments';
 import './index.css';
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
@@ -43,6 +45,8 @@ function AppRoutes() {
       <Route path="/summary" element={<ProtectedRoute><MonthlySummary /></ProtectedRoute>} />
       <Route path="/customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />
       <Route path="/customers/:id" element={<ProtectedRoute><CustomerDetail /></ProtectedRoute>} />
+      <Route path="/customers/:id/ledger" element={<ProtectedRoute><CustomerLedger /></ProtectedRoute>} />
+      <Route path="/admin/pending-payments" element={<ProtectedRoute><PendingPayments /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
       <Route path="/card" element={<ProtectedRoute><MilkCard /></ProtectedRoute>} />
       <Route path="/shops" element={<ProtectedRoute><Shops /></ProtectedRoute>} />

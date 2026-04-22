@@ -115,6 +115,52 @@ export const entryApi = {
     delete: (id: string) => api.delete(`/entries/${id}`),
 };
 
+// --- Ledger APIs ---
+export const ledgerApi = {
+    setOpeningBalance: (data: {
+        customer_id: string;
+        direction: 'DEBIT' | 'CREDIT';
+        amount: number;
+        as_of_date: string;
+        note?: string;
+    }) => api.post('/ledger/opening-balance', data),
+
+    recordPayment: (data: {
+        customer_id: string;
+        amount: number;
+        payment_mode: 'CASH' | 'ONLINE' | 'RAZORPAY';
+        transaction_date: string;
+        note?: string;
+    }) => api.post('/ledger/payments', data),
+
+    approvePayment: (id: string) =>
+        api.patch(`/ledger/payments/${id}/approve`),
+
+    rejectPayment: (id: string, reason: string) =>
+        api.patch(`/ledger/payments/${id}/reject`, { reason }),
+
+    getCustomerLedger: (customerId: string, params?: {
+        from_date?: string;
+        to_date?: string;
+        entry_type?: string;
+        status?: string;
+        page?: number;
+        limit?: number;
+    }) => api.get(`/ledger/customer/${customerId}`, { params }),
+
+    getCustomerBalance: (customerId: string) =>
+        api.get(`/ledger/customer/${customerId}/balance`),
+
+    hasOpeningBalance: (customerId: string) =>
+        api.get(`/ledger/customer/${customerId}/has-opening-balance`),
+
+    getPendingPayments: () =>
+        api.get('/ledger/pending-payments'),
+
+    getPendingCount: () =>
+        api.get('/ledger/pending-payments/count'),
+};
+
 // --- Summary APIs ---
 export const summaryApi = {
     list: (month: string, customerId?: string) =>

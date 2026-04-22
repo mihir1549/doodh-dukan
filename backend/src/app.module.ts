@@ -13,6 +13,7 @@ import { EntriesModule } from './modules/entries/entries.module';
 import { SummariesModule } from './modules/summaries/summaries.module';
 import { SchedulerModule } from './modules/scheduler/scheduler.module';
 import { HealthModule } from './modules/health/health.module';
+import { LedgerModule } from './modules/ledger/ledger.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { HealthModule } from './modules/health/health.module';
     SummariesModule,
     SchedulerModule,
     HealthModule,
+    LedgerModule,
   ],
 })
 export class AppModule { }

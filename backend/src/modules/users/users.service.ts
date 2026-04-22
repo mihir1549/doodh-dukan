@@ -169,26 +169,38 @@ export class UsersService implements OnModuleInit {
     async createForCustomer(tenantId: string, customer: any) {
         if (!customer.phone) return null;
 
-        const existing = await this.userRepo.findOne({
-            where: { phone: customer.phone },
-        });
-
-        // Create or update existing with default password
         const defaultPin = '123456';
         const hashedPin = await bcrypt.hash(defaultPin, 10);
 
-        if (existing) {
-            // If user exists and is not already admin/owner, 
-            // link them to this customer and set role/PIN
-            if ([UserRole.CUSTOMER, UserRole.DELIVERY].includes(existing.role)) {
-                existing.customer_id = customer.id;
-                existing.role = UserRole.CUSTOMER;
-                existing.password_hash = hashedPin;
-                return this.userRepo.save(existing);
-            }
-            return existing;
+        // 1. Check if a user is already linked to this customer_id
+        const userByCustomerId = await this.userRepo.findOne({
+            where: { customer_id: customer.id },
+        });
+
+        if (userByCustomerId) {
+            // Update details (phone might have changed)
+            userByCustomerId.phone = customer.phone;
+            userByCustomerId.name = customer.name;
+            return this.userRepo.save(userByCustomerId);
         }
 
+        // 2. No user linked by ID, check if THIS phone number exists
+        const existingByPhone = await this.userRepo.findOne({
+            where: { phone: customer.phone },
+        });
+
+        if (existingByPhone) {
+            // If it's a basic user/delivery, link them to the customer
+            if ([UserRole.CUSTOMER, UserRole.DELIVERY].includes(existingByPhone.role)) {
+                existingByPhone.customer_id = customer.id;
+                existingByPhone.name = customer.name;
+                existingByPhone.role = UserRole.CUSTOMER;
+                return this.userRepo.save(existingByPhone);
+            }
+            return existingByPhone;
+        }
+
+        // 3. Create new user
         const user = this.userRepo.create({
             tenant_id: tenantId,
             name: customer.name,

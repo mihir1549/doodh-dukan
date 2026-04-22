@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, ILike, Brackets } from 'typeorm';
 import { Customer } from './customer.entity';
@@ -7,13 +7,28 @@ import { UsersService } from '../users/users.service';
 import { TenantsService } from '../tenants/tenants.service';
 
 @Injectable()
-export class CustomersService {
+export class CustomersService implements OnModuleInit {
     constructor(
         @InjectRepository(Customer)
         private customerRepo: Repository<Customer>,
         private usersService: UsersService,
         private tenantsService: TenantsService,
     ) { }
+
+    async onModuleInit() {
+        console.log('🚀 Syncing customer user accounts...');
+        const customers = await this.customerRepo.find({
+            where: { is_active: true },
+        });
+
+        for (const customer of customers) {
+            if (customer.phone) {
+                // This will create or update the user account for the customer
+                await this.usersService.createForCustomer(customer.tenant_id, customer);
+            }
+        }
+        console.log(`✅ Synced ${customers.length} customers.`);
+    }
 
     async findAll(
         tenantId: string,
@@ -108,7 +123,12 @@ export class CustomersService {
     async update(tenantId: string, id: string, dto: UpdateCustomerDto) {
         const customer = await this.findOne(tenantId, id);
         Object.assign(customer, dto);
-        return this.customerRepo.save(customer);
+        const savedCustomer = await this.customerRepo.save(customer);
+
+        // Ensure user account is synced (created if phone added, or ID linked)
+        await this.usersService.createForCustomer(tenantId, savedCustomer);
+
+        return savedCustomer;
     }
 
     async deactivate(tenantId: string, id: string) {
