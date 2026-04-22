@@ -70,7 +70,7 @@ export default function CustomerLedger() {
     const balanceColor = balance > 0 ? 'var(--danger)' : balance < 0 ? 'var(--success)' : 'var(--text-muted)';
     const balanceLabel = balance > 0 ? 'Owes' : balance < 0 ? 'Advance' : 'Settled';
 
-    const canRecord = ['OWNER', 'SHOP_STAFF', 'DELIVERY', 'CUSTOMER', 'SUPER_ADMIN'].includes(user?.role?.toUpperCase());
+    const canRecord = ['OWNER', 'SHOP_STAFF', 'DELIVERY', 'CUSTOMER', 'SUPER_ADMIN'].includes(user?.role?.toUpperCase() ?? '');
 
     return (
         <div className="page">

@@ -28,7 +28,7 @@ export default function PendingPayments() {
     const [rejectReason, setRejectReason] = useState('');
     const [processing, setProcessing] = useState<string | null>(null);
 
-    const isAdmin = ['OWNER', 'SUPER_ADMIN'].includes(user?.role?.toUpperCase());
+    const isAdmin = ['OWNER', 'SUPER_ADMIN'].includes(user?.role?.toUpperCase() ?? '');
 
     useEffect(() => {
         if (!isAdmin) { navigate('/'); return; }
