@@ -1,7 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+    ChevronLeft, Plus, Trash2, Calendar, Wallet,
+    ClipboardList,
+} from 'lucide-react';
 import { useAuth } from '../AuthContext';
 import { entryApi } from '../api';
+import { avatarColor, avatarLetter } from '../utils/avatar';
 
 export default function TodayEntries() {
     const navigate = useNavigate();
@@ -22,12 +27,15 @@ export default function TodayEntries() {
         try {
             const res = await entryApi.list(today);
             setEntries(res.data?.data || []);
-        } catch { setEntries([]); }
-        finally { setLoading(false); }
+        } catch {
+            setEntries([]);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleDelete = async (id: string) => {
-        if (!window.confirm('Are you sure you want to delete this entry?')) return;
+        if (!window.confirm('Delete this entry?')) return;
         try {
             await entryApi.delete(id);
             loadEntries();
@@ -36,36 +44,88 @@ export default function TodayEntries() {
         }
     };
 
-    // Group entries by customer
-    const grouped = entries.reduce((acc: any, entry: any) => {
-        const name = entry.customer?.name || 'Unknown';
-        if (!acc[name]) acc[name] = [];
-        acc[name].push(entry);
+    // Group entries by customer_id (more reliable than name)
+    const grouped = entries.reduce((acc: Record<string, any>, entry: any) => {
+        const key = entry.customer?.id || entry.customer?.name || 'unknown';
+        if (!acc[key]) {
+            acc[key] = { customer: entry.customer, entries: [] };
+        }
+        acc[key].entries.push(entry);
         return acc;
     }, {});
 
-    const totalAmount = entries.reduce((sum: number, e: any) => sum + Number(e.line_total || 0), 0);
+    const totalAmount = entries.reduce((s: number, e: any) => s + Number(e.line_total || 0), 0);
 
     return (
         <div className="page">
             <div className="page-header">
-                <button className="back-btn" onClick={() => navigate('/')}>← Home</button>
+                <button className="back-btn" onClick={() => navigate('/')}>
+                    <ChevronLeft size={16} strokeWidth={2} />
+                    Home
+                </button>
                 <h1>Today's Entries</h1>
+                <div style={{ width: 80 }} />
             </div>
 
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '16px', fontSize: '0.9rem' }}>
+            <p
+                style={{
+                    color: 'var(--text-secondary)',
+                    marginBottom: 16,
+                    fontSize: '0.85rem',
+                    fontFamily: 'var(--font-body)',
+                }}
+            >
                 {formattedDate}
             </p>
 
-            {/* Summary bar */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 18px', background: 'var(--bg-card)', borderRadius: 'var(--radius-md)', marginBottom: '20px', border: '1px solid var(--border)' }}>
-                <div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Total Entries</div>
-                    <div style={{ fontWeight: 700, fontSize: '1.2rem' }}>{entries.length}</div>
+            {/* Stat bar */}
+            <div
+                style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: 12,
+                    marginBottom: 20,
+                }}
+            >
+                <div className="stat-card">
+                    <div
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            color: 'var(--text-secondary)',
+                            fontSize: '0.72rem',
+                            fontWeight: 600,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.05em',
+                            marginBottom: 6,
+                        }}
+                    >
+                        <Calendar size={13} strokeWidth={2} />
+                        Entries
+                    </div>
+                    <div className="stat-value amount-neutral">{entries.length}</div>
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Total Amount</div>
-                    <div style={{ fontWeight: 700, fontSize: '1.2rem', color: 'var(--success)' }}>₹{totalAmount.toFixed(2)}</div>
+                <div className="stat-card">
+                    <div
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            color: 'var(--text-secondary)',
+                            fontSize: '0.72rem',
+                            fontWeight: 600,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.05em',
+                            marginBottom: 6,
+                        }}
+                    >
+                        <Wallet size={13} strokeWidth={2} />
+                        Total
+                    </div>
+                    <div className="stat-value amount-positive">
+                        ₹{totalAmount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                    </div>
                 </div>
             </div>
 
@@ -73,63 +133,190 @@ export default function TodayEntries() {
                 <div className="loading"><div className="spinner" /></div>
             ) : entries.length === 0 ? (
                 <div className="empty-state">
-                    <div className="empty-icon">📋</div>
-                    <p>No entries yet today</p>
-                    <button className="btn btn-primary" style={{ marginTop: '16px' }} onClick={() => navigate('/add-entry')}>
+                    <ClipboardList size={40} style={{ opacity: 0.4 }} />
+                    <p style={{ marginTop: 8 }}>No entries yet today</p>
+                    <button
+                        className="btn btn-primary"
+                        style={{ marginTop: 16 }}
+                        onClick={() => navigate('/add-entry')}
+                    >
+                        <Plus size={16} strokeWidth={2} />
                         Add First Entry
                     </button>
                 </div>
             ) : (
-                Object.entries(grouped).map(([customerName, customerEntries]: [string, any]) => (
-                    <div key={customerName} className="card" style={{ marginBottom: '14px' }}>
-                        <div style={{ fontWeight: 700, fontSize: '1.05rem', marginBottom: '8px', display: 'flex', justifyContent: 'space-between' }}>
-                            <span>{customerName}</span>
-                            <span style={{ color: 'var(--accent)' }}>
-                                ₹{customerEntries.reduce((s: number, e: any) => s + Number(e.line_total || 0), 0).toFixed(2)}
-                            </span>
-                        </div>
-                        {customerEntries.map((entry: any) => (
-                            <div key={entry.id} className="entry-item">
-                                <div className="entry-info">
-                                    <h4>{entry.product?.name || 'Product'}</h4>
-                                    <p>{Number(entry.quantity)} {entry.product?.unit} × ₹{Number(entry.unit_price).toFixed(2)}</p>
-                                    <p>
-                                        <span className="badge badge-role" style={{ fontSize: '0.65rem' }}>
-                                            {entry.source}
-                                        </span>
-                                        <span className="badge" style={{ fontSize: '0.65rem', marginLeft: '4px', background: 'var(--bg-page)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
-                                            {entry.entry_slot}
-                                        </span>
-                                        {entry.created_by_user?.name && (
-                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '8px' }}>
-                                                by {entry.created_by_user.name}
-                                            </span>
-                                        )}
-                                    </p>
+                Object.values(grouped).map((group: any) => {
+                    const c = group.customer;
+                    const color = avatarColor(c?.name);
+                    const letter = avatarLetter(c?.name);
+                    const subtotal = group.entries.reduce(
+                        (s: number, e: any) => s + Number(e.line_total || 0),
+                        0,
+                    );
+                    const address = (c?.address || '').trim();
+                    const shortAddress = address.length > 34 ? address.slice(0, 34) + '…' : address;
+
+                    return (
+                        <div
+                            key={c?.id || c?.name}
+                            className="card"
+                            style={{ marginBottom: 12, padding: 14 }}
+                        >
+                            {/* Customer header */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+                                <div
+                                    className="customer-avatar"
+                                    style={{ background: color.bg, color: color.fg, width: 38, height: 38, fontSize: '0.95rem' }}
+                                >
+                                    {letter}
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                    <span className="entry-amount">₹{Number(entry.line_total).toFixed(2)}</span>
-                                    {user?.role === 'OWNER' && (
-                                        <button
-                                            onClick={() => handleDelete(entry.id)}
-                                            style={{ background: 'var(--danger-light)', border: 'none', color: 'var(--danger)', padding: '6px 10px', borderRadius: '8px', cursor: 'pointer', fontSize: '0.85rem' }}
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div
+                                        style={{
+                                            fontFamily: 'var(--font-display)',
+                                            fontWeight: 600,
+                                            fontSize: '0.98rem',
+                                            color: 'var(--text-primary)',
+                                        }}
+                                    >
+                                        {c?.name || 'Unknown'}
+                                    </div>
+                                    <div
+                                        style={{
+                                            fontFamily: 'var(--font-mono)',
+                                            fontSize: '0.76rem',
+                                            color: 'var(--text-secondary)',
+                                        }}
+                                    >
+                                        #{c?.customer_number ?? '—'}
+                                        {c?.phone ? ` · ${c.phone}` : ''}
+                                    </div>
+                                    {shortAddress && (
+                                        <div
+                                            style={{
+                                                fontSize: '0.74rem',
+                                                color: 'var(--text-muted)',
+                                                marginTop: 1,
+                                            }}
                                         >
-                                            🗑
-                                        </button>
+                                            {shortAddress}
+                                        </div>
                                     )}
                                 </div>
+                                <span
+                                    className="amount-medium amount-positive"
+                                    style={{ whiteSpace: 'nowrap' }}
+                                >
+                                    ₹{subtotal.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                                </span>
                             </div>
-                        ))}
-                    </div>
-                ))
+
+                            {/* Entry rows */}
+                            <div
+                                style={{
+                                    borderTop: '1px solid var(--border-subtle)',
+                                    paddingTop: 6,
+                                }}
+                            >
+                                {group.entries.map((entry: any) => (
+                                    <div
+                                        key={entry.id}
+                                        style={{
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            padding: '8px 0',
+                                            borderBottom: '1px solid var(--border-subtle)',
+                                            gap: 10,
+                                        }}
+                                    >
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div
+                                                style={{
+                                                    fontSize: '0.9rem',
+                                                    fontWeight: 500,
+                                                    color: 'var(--text-primary)',
+                                                }}
+                                            >
+                                                {entry.product?.name || 'Product'}
+                                                <span
+                                                    style={{
+                                                        fontFamily: 'var(--font-mono)',
+                                                        color: 'var(--text-secondary)',
+                                                        marginLeft: 6,
+                                                        fontSize: '0.82rem',
+                                                        fontWeight: 400,
+                                                    }}
+                                                >
+                                                    {Number(entry.quantity)}{entry.product?.unit || ''} × ₹{Number(entry.unit_price).toFixed(2)}
+                                                </span>
+                                            </div>
+                                            <div
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: 6,
+                                                    marginTop: 4,
+                                                    flexWrap: 'wrap',
+                                                }}
+                                            >
+                                                <span className="badge badge-info">{entry.source}</span>
+                                                <span className="badge badge-muted">{entry.entry_slot}</span>
+                                                {entry.created_by_user?.name && (
+                                                    <span
+                                                        style={{
+                                                            fontSize: '0.72rem',
+                                                            color: 'var(--text-muted)',
+                                                        }}
+                                                    >
+                                                        by {entry.created_by_user.name}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                            <span
+                                                className="amount-small amount-positive"
+                                                style={{ whiteSpace: 'nowrap' }}
+                                            >
+                                                ₹{Number(entry.line_total).toFixed(2)}
+                                            </span>
+                                            {user?.role === 'OWNER' && (
+                                                <button
+                                                    onClick={() => handleDelete(entry.id)}
+                                                    aria-label="Delete entry"
+                                                    style={{
+                                                        background: 'var(--danger-bg)',
+                                                        border: 'none',
+                                                        color: 'var(--danger)',
+                                                        padding: 6,
+                                                        borderRadius: 'var(--radius-sm)',
+                                                        cursor: 'pointer',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                    }}
+                                                >
+                                                    <Trash2 size={15} strokeWidth={1.75} />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    );
+                })
             )}
 
+            {/* Floating Action Button */}
             <button
-                className="btn btn-primary btn-full"
-                style={{ marginTop: '16px' }}
+                className="fab"
                 onClick={() => navigate('/add-entry')}
+                aria-label="Add new entry"
+                title="Add new entry"
             >
-                ➕ Add New Entry
+                <Plus size={24} strokeWidth={2.25} />
             </button>
         </div>
     );

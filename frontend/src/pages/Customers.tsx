@@ -1,7 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+    ChevronLeft, ChevronRight, Search, Plus, X, Wallet,
+    BookOpen, Users, CheckCircle2,
+} from 'lucide-react';
 import { customerApi, ledgerApi } from '../api';
 import { useAuth } from '../AuthContext';
+import { avatarColor, avatarLetter } from '../utils/avatar';
 import SetOpeningBalanceModal from '../components/SetOpeningBalanceModal';
 
 function formatBalance(n: number) {
@@ -49,7 +54,6 @@ export default function Customers() {
             if (meta) setHasMore(pageNum < meta.totalPages);
             else setHasMore(newData.length === 50);
 
-            // Load balances for visible customers in background
             loadBalances(newData.map((c: any) => c.id));
         } catch {
             if (pageNum === 1) setCustomers([]);
@@ -112,7 +116,9 @@ export default function Customers() {
             loadCustomers(search, 1);
         } catch (err: any) {
             alert(err.response?.data?.message || 'Failed to save');
-        } finally { setSaving(false); }
+        } finally {
+            setSaving(false);
+        }
     };
 
     const handleOpeningBalanceSuccess = (customerId: string) => {
@@ -124,42 +130,96 @@ export default function Customers() {
     return (
         <div className="page">
             <div className="page-header">
-                <button className="back-btn" onClick={() => navigate('/')}>← Home</button>
+                <button className="back-btn" onClick={() => navigate('/')}>
+                    <ChevronLeft size={16} strokeWidth={2} />
+                    Home
+                </button>
                 <h1>Customers</h1>
-            </div>
-
-            <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
-                <div className="search-box" style={{ flex: 1, marginBottom: 0 }}>
-                    <span className="search-icon">🔍</span>
-                    <input
-                        placeholder="Search by name, phone, or #number..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        style={{ paddingLeft: '44px' }}
-                    />
-                </div>
-                <button className="btn btn-primary" onClick={() => setShowForm(!showForm)} style={{ whiteSpace: 'nowrap' }}>
-                    {showForm ? '✕' : '+ Add'}
+                <button
+                    className="btn btn-primary"
+                    onClick={() => setShowForm(!showForm)}
+                    style={{
+                        minHeight: 'auto',
+                        padding: '8px 12px',
+                        fontSize: '0.82rem',
+                    }}
+                >
+                    {showForm ? (
+                        <X size={14} strokeWidth={2.25} />
+                    ) : (
+                        <>
+                            <Plus size={14} strokeWidth={2.25} />
+                            Add
+                        </>
+                    )}
                 </button>
             </div>
 
+            {/* Search */}
+            <div className="search-box">
+                <span className="search-icon">
+                    <Search size={16} strokeWidth={2} />
+                </span>
+                <input
+                    placeholder="Search by name, phone, or #number…"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                />
+            </div>
+
+            {/* Add customer inline form */}
             {showForm && (
-                <div className="card" style={{ marginBottom: '16px', border: '2px solid var(--accent)' }}>
-                    <h3 style={{ marginBottom: '14px', fontSize: '1rem' }}>New Customer</h3>
+                <div
+                    className="card card-elevated"
+                    style={{
+                        marginBottom: 16,
+                        borderColor: 'var(--border-brand)',
+                        padding: 16,
+                    }}
+                >
+                    <h3 style={{ marginBottom: 12, fontSize: '0.95rem', fontFamily: 'var(--font-display)' }}>
+                        New Customer
+                    </h3>
                     <div className="form-group">
                         <label>Name *</label>
-                        <input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="Customer name" />
+                        <input
+                            value={formData.name}
+                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                            placeholder="Customer name"
+                        />
                     </div>
                     <div className="form-group">
                         <label>Phone</label>
-                        <input value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} placeholder="Phone number" />
+                        <input
+                            value={formData.phone}
+                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                            placeholder="Phone number"
+                        />
                     </div>
                     <div className="form-group">
                         <label>Address</label>
-                        <input value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} placeholder="Address" />
+                        <input
+                            value={formData.address}
+                            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                            placeholder="Address"
+                        />
                     </div>
-                    <button className="btn btn-success btn-full" onClick={handleSave} disabled={saving}>
-                        {saving ? '⏳ Saving...' : '✅ Save Customer'}
+                    <button
+                        className="btn btn-success btn-full"
+                        onClick={handleSave}
+                        disabled={saving}
+                    >
+                        {saving ? (
+                            <>
+                                <div className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
+                                Saving…
+                            </>
+                        ) : (
+                            <>
+                                <CheckCircle2 size={16} strokeWidth={2} />
+                                Save Customer
+                            </>
+                        )}
                     </button>
                 </div>
             )}
@@ -168,93 +228,171 @@ export default function Customers() {
                 <div className="loading"><div className="spinner" /></div>
             ) : !loading && customers.length === 0 ? (
                 <div className="empty-state">
-                    <div className="empty-icon">👥</div>
-                    <p>No customers yet</p>
+                    <Users size={40} style={{ opacity: 0.4 }} />
+                    <p style={{ marginTop: 8 }}>No customers yet</p>
                 </div>
             ) : (
-                <div style={{ maxHeight: '70vh', overflowY: 'auto', paddingRight: '4px', paddingBottom: '20px' }}>
-                    {customers.map((c: any) => {
+                <div
+                    style={{
+                        background: 'var(--bg-surface)',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: 'var(--radius-lg)',
+                        overflow: 'hidden',
+                    }}
+                >
+                    {customers.map((c: any, idx: number) => {
                         const bal = balances[c.id];
                         const hasBal = bal !== undefined;
                         const balColor = !hasBal ? 'var(--text-muted)'
                             : bal > 0 ? 'var(--danger)'
                                 : bal < 0 ? 'var(--success)'
                                     : 'var(--text-muted)';
+                        const balBg = !hasBal ? 'transparent'
+                            : bal > 0 ? 'var(--danger-bg)'
+                                : bal < 0 ? 'var(--success-bg)'
+                                    : 'transparent';
                         const hasOB = openingFlags[c.id];
+                        const color = avatarColor(c.name);
+                        const letter = avatarLetter(c.name);
+                        const address = (c.address || '').trim();
+                        const shortAddress = address.length > 32 ? address.slice(0, 32) + '…' : address;
+                        const isLast = idx === customers.length - 1;
 
                         return (
                             <div
                                 key={c.id}
-                                className="customer-item"
-                                style={{ borderBottom: '1px solid var(--border)', flexDirection: 'column', alignItems: 'stretch', cursor: 'default' }}
+                                style={{
+                                    padding: '14px 16px',
+                                    borderBottom: isLast ? 'none' : '1px solid var(--border-subtle)',
+                                }}
                             >
                                 {/* Main row */}
                                 <div
-                                    style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}
+                                    style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}
                                     onClick={() => navigate(`/customers/${c.id}`)}
                                 >
-                                    <div className="customer-avatar">{c.customer_number || c.name?.charAt(0)?.toUpperCase()}</div>
-                                    <div style={{ flex: 1 }}>
-                                        <div className="customer-name">#{c.customer_number} · {c.name}</div>
-                                        {c.phone && <div className="customer-phone">{c.phone}</div>}
-                                    </div>
-                                    {/* Balance chip */}
                                     <div
-                                        style={{ textAlign: 'right', cursor: 'pointer' }}
-                                        onClick={(ev) => { ev.stopPropagation(); navigate(`/customers/${c.id}/ledger`); }}
+                                        className="customer-avatar"
+                                        style={{ background: color.bg, color: color.fg, width: 40, height: 40 }}
                                     >
-                                        {hasBal ? (
-                                            <div style={{
-                                                color: balColor,
+                                        {letter}
+                                    </div>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div
+                                            style={{
+                                                fontFamily: 'var(--font-display)',
                                                 fontWeight: 600,
-                                                fontSize: '0.88rem',
-                                                background: bal > 0 ? 'var(--danger-light)' : bal < 0 ? 'var(--success-light)' : 'transparent',
-                                                padding: bal !== 0 ? '3px 8px' : '0',
-                                                borderRadius: 'var(--radius-sm)',
-                                            }}>
-                                                {bal === 0 ? '—' : formatBalance(bal)}
+                                                fontSize: '0.98rem',
+                                                color: 'var(--text-primary)',
+                                            }}
+                                        >
+                                            {c.name}
+                                        </div>
+                                        <div
+                                            style={{
+                                                fontFamily: 'var(--font-mono)',
+                                                fontSize: '0.78rem',
+                                                color: 'var(--text-secondary)',
+                                            }}
+                                        >
+                                            #{c.customer_number}
+                                            {c.phone ? ` · ${c.phone}` : ''}
+                                        </div>
+                                        {shortAddress && (
+                                            <div
+                                                style={{
+                                                    fontSize: '0.76rem',
+                                                    color: 'var(--text-muted)',
+                                                    marginTop: 2,
+                                                    whiteSpace: 'nowrap',
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis',
+                                                }}
+                                            >
+                                                {shortAddress}
                                             </div>
-                                        ) : (
-                                            <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>—</div>
                                         )}
                                     </div>
-                                    <span style={{ color: 'var(--text-muted)', fontSize: '1.2rem' }}>›</span>
+
+                                    {/* Balance chip */}
+                                    <div
+                                        style={{ textAlign: 'right' }}
+                                        onClick={(ev) => { ev.stopPropagation(); navigate(`/customers/${c.id}/ledger`); }}
+                                    >
+                                        {hasBal && bal !== 0 ? (
+                                            <div
+                                                style={{
+                                                    fontFamily: 'var(--font-mono)',
+                                                    fontWeight: 500,
+                                                    fontSize: '0.85rem',
+                                                    color: balColor,
+                                                    background: balBg,
+                                                    padding: '3px 8px',
+                                                    borderRadius: 'var(--radius-sm)',
+                                                }}
+                                            >
+                                                {formatBalance(bal)}
+                                            </div>
+                                        ) : (
+                                            <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                                                {hasBal ? '—' : ''}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <ChevronRight size={16} strokeWidth={2} style={{ color: 'var(--text-muted)' }} />
                                 </div>
 
-                                {/* Admin actions row */}
+                                {/* Admin action buttons */}
                                 {isAdmin && (
-                                    <div style={{ display: 'flex', gap: '8px', marginTop: '8px', paddingLeft: '52px' }}>
+                                    <div
+                                        style={{
+                                            display: 'flex',
+                                            gap: 6,
+                                            marginTop: 10,
+                                            paddingLeft: 52,
+                                        }}
+                                    >
                                         <button
                                             className="btn btn-outline"
-                                            style={{ fontSize: '0.75rem', padding: '5px 10px' }}
+                                            style={{
+                                                fontSize: '0.74rem',
+                                                padding: '5px 9px',
+                                                minHeight: 'auto',
+                                            }}
                                             onClick={(e) => { e.stopPropagation(); setOpeningBalanceFor({ id: c.id, name: c.name }); }}
                                         >
-                                            {hasOB === undefined ? '⚡ Opening Bal' : hasOB ? '✏️ Edit Opening Bal' : '+ Set Opening Bal'}
+                                            <Wallet size={12} strokeWidth={2} />
+                                            {hasOB ? 'Edit Opening' : 'Opening Bal'}
                                         </button>
                                         <button
                                             className="btn btn-outline"
-                                            style={{ fontSize: '0.75rem', padding: '5px 10px' }}
+                                            style={{
+                                                fontSize: '0.74rem',
+                                                padding: '5px 9px',
+                                                minHeight: 'auto',
+                                            }}
                                             onClick={(e) => { e.stopPropagation(); navigate(`/customers/${c.id}/ledger`); }}
                                         >
-                                            📒 Passbook
+                                            <BookOpen size={12} strokeWidth={2} />
+                                            Passbook
                                         </button>
                                     </div>
                                 )}
                             </div>
                         );
                     })}
-
-                    {hasMore && customers.length > 0 && !loading && (
-                        <button
-                            className="btn btn-outline btn-full"
-                            style={{ marginTop: '10px' }}
-                            onClick={handleLoadMore}
-                            disabled={loadingMore}
-                        >
-                            {loadingMore ? 'Loading...' : 'Load More Customers'}
-                        </button>
-                    )}
                 </div>
+            )}
+
+            {hasMore && customers.length > 0 && !loading && (
+                <button
+                    className="btn btn-outline btn-full"
+                    style={{ marginTop: 10 }}
+                    onClick={handleLoadMore}
+                    disabled={loadingMore}
+                >
+                    {loadingMore ? 'Loading…' : 'Load More Customers'}
+                </button>
             )}
 
             {openingBalanceFor && (

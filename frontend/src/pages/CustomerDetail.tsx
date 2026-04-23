@@ -1,6 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import {
+    ChevronLeft, ChevronRight, Pencil, Package, Calendar,
+    Lock, Unlock, X, CheckCircle2, Wallet, TrendingUp, BookOpen,
+} from 'lucide-react';
 import { customerApi, summaryApi, entryApi } from '../api';
+import { avatarColor, avatarLetter } from '../utils/avatar';
 
 export default function CustomerDetail() {
     const navigate = useNavigate();
@@ -44,7 +49,7 @@ export default function CustomerDetail() {
             setEditForm({
                 name: custRes.data?.data?.name || '',
                 phone: custRes.data?.data?.phone || '',
-                address: custRes.data?.data?.address || ''
+                address: custRes.data?.data?.address || '',
             });
         } catch {
             setCustomer(null);
@@ -61,7 +66,7 @@ export default function CustomerDetail() {
         setMonthYear(`${y}-${String(m).padStart(2, '0')}`);
     };
 
-    const handleEditSave = async (e: React.FormEvent) => {
+    const handleEditSave = async (e: { preventDefault: () => void }) => {
         e.preventDefault();
         setSaving(true);
         try {
@@ -76,7 +81,7 @@ export default function CustomerDetail() {
         }
     };
 
-    // Build product-wise breakdown from entries
+    // Product breakdown
     const productBreakdown: Record<string, { name: string; qty: number; unit: string; amount: number }> = {};
     entries.forEach((e: any) => {
         const pId = e.product_id;
@@ -102,56 +107,405 @@ export default function CustomerDetail() {
         return d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
     };
 
-    if (loading) return (
-        <div className="page">
-            <div className="page-header">
-                <button className="back-btn" onClick={() => navigate(-1)}>← Back</button>
-                <h1>Customer</h1>
+    if (loading) {
+        return (
+            <div className="page">
+                <div className="page-header">
+                    <button className="back-btn" onClick={() => navigate(-1)}>
+                        <ChevronLeft size={16} strokeWidth={2} />
+                        Back
+                    </button>
+                    <h1>Customer</h1>
+                    <div style={{ width: 80 }} />
+                </div>
+                <div className="loading"><div className="spinner" /></div>
             </div>
-            <div className="loading"><div className="spinner" /></div>
-        </div>
-    );
-    if (!customer) return <div className="page"><div className="page-header"><button className="back-btn" onClick={() => navigate(-1)}>← Back</button><h1>Customer</h1></div><p style={{ marginTop: '20px' }}>Customer not found</p></div>;
+        );
+    }
+
+    if (!customer) {
+        return (
+            <div className="page">
+                <div className="page-header">
+                    <button className="back-btn" onClick={() => navigate(-1)}>
+                        <ChevronLeft size={16} strokeWidth={2} />
+                        Back
+                    </button>
+                    <h1>Customer</h1>
+                    <div style={{ width: 80 }} />
+                </div>
+                <p style={{ marginTop: 20, color: 'var(--text-muted)' }}>Customer not found</p>
+            </div>
+        );
+    }
+
+    const color = avatarColor(customer.name);
+    const letter = avatarLetter(customer.name);
 
     return (
         <div className="page">
             <div className="page-header">
-                <button className="back-btn" onClick={() => navigate(-1)}>← Back</button>
+                <button className="back-btn" onClick={() => navigate(-1)}>
+                    <ChevronLeft size={16} strokeWidth={2} />
+                    Back
+                </button>
                 <h1>Customer</h1>
-            </div>
-
-            {/* Customer Info Card */}
-            <div className="card" style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    <div className="customer-avatar" style={{ width: '56px', height: '56px', fontSize: '1.4rem' }}>
-                        {customer.name?.charAt(0)?.toUpperCase()}
-                    </div>
-                    <div>
-                        <div style={{ fontWeight: 700, fontSize: '1.2rem' }}>{customer.name}</div>
-                        {customer.phone && <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{customer.phone}</div>}
-                        {customer.address && <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{customer.address}</div>}
-                    </div>
-                </div>
                 <button
-                    onClick={() => setIsEditing(true)}
-                    style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: '1.5rem', padding: '8px' }}
+                    className="icon-btn"
+                    onClick={() => navigate(`/customers/${id}/ledger`)}
+                    aria-label="Passbook"
+                    title="Passbook"
                 >
-                    ✏️
+                    <BookOpen size={18} strokeWidth={1.75} />
                 </button>
             </div>
 
+            {/* Profile card */}
+            <div
+                className="card card-elevated"
+                style={{ marginBottom: 20, padding: 16 }}
+            >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                    <div
+                        className="customer-avatar"
+                        style={{
+                            width: 52,
+                            height: 52,
+                            fontSize: '1.3rem',
+                            background: color.bg,
+                            color: color.fg,
+                        }}
+                    >
+                        {letter}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                        <div
+                            style={{
+                                fontFamily: 'var(--font-display)',
+                                fontWeight: 700,
+                                fontSize: '1.1rem',
+                                color: 'var(--text-primary)',
+                            }}
+                        >
+                            {customer.name}
+                        </div>
+                        <div
+                            style={{
+                                fontFamily: 'var(--font-mono)',
+                                fontSize: '0.8rem',
+                                color: 'var(--text-secondary)',
+                                marginTop: 2,
+                            }}
+                        >
+                            #{customer.customer_number}
+                            {customer.phone ? ` · ${customer.phone}` : ''}
+                        </div>
+                        {customer.address && (
+                            <div
+                                style={{
+                                    fontSize: '0.8rem',
+                                    color: 'var(--text-muted)',
+                                    marginTop: 2,
+                                }}
+                            >
+                                {customer.address}
+                            </div>
+                        )}
+                    </div>
+                    <button
+                        className="icon-btn"
+                        onClick={() => setIsEditing(true)}
+                        aria-label="Edit profile"
+                    >
+                        <Pencil size={16} strokeWidth={2} />
+                    </button>
+                </div>
+            </div>
+
+            {/* Month Picker */}
+            <div className="month-picker">
+                <button onClick={() => changeMonth(-1)} aria-label="Previous month">
+                    <ChevronLeft size={18} strokeWidth={2} />
+                </button>
+                <span style={{ fontFamily: 'var(--font-display)' }}>{monthName}</span>
+                <button onClick={() => changeMonth(1)} aria-label="Next month">
+                    <ChevronRight size={18} strokeWidth={2} />
+                </button>
+            </div>
+
+            {/* Stat cards */}
+            {summary ? (
+                <div
+                    style={{
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 1fr',
+                        gap: 10,
+                        marginBottom: 20,
+                    }}
+                >
+                    <div className="stat-card">
+                        <div
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                color: 'var(--text-secondary)',
+                                fontSize: '0.72rem',
+                                fontWeight: 600,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.05em',
+                                marginBottom: 6,
+                            }}
+                        >
+                            <Wallet size={13} strokeWidth={2} />
+                            This Month
+                        </div>
+                        <div className="amount-medium amount-positive">
+                            ₹{Number(summary.total_amount).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                        </div>
+                    </div>
+                    <div className="stat-card">
+                        <div
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                color: 'var(--text-secondary)',
+                                fontSize: '0.72rem',
+                                fontWeight: 600,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.05em',
+                                marginBottom: 6,
+                            }}
+                        >
+                            <TrendingUp size={13} strokeWidth={2} />
+                            Entries
+                        </div>
+                        <div className="amount-medium amount-neutral">
+                            {summary.entry_count}
+                        </div>
+                        <div style={{ marginTop: 4 }}>
+                            <span className={summary.is_locked ? 'badge badge-muted' : 'badge badge-success'}>
+                                {summary.is_locked ? (
+                                    <>
+                                        <Lock size={10} strokeWidth={2} /> Locked
+                                    </>
+                                ) : (
+                                    <>
+                                        <Unlock size={10} strokeWidth={2} /> Open
+                                    </>
+                                )}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            ) : (
+                <div className="empty-state" style={{ padding: 24, marginBottom: 16 }}>
+                    <p>No entries for {monthName}</p>
+                </div>
+            )}
+
+            {/* Product breakdown */}
+            {Object.keys(productBreakdown).length > 0 && (
+                <>
+                    <h3
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            fontSize: '0.78rem',
+                            color: 'var(--text-secondary)',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.05em',
+                            fontWeight: 600,
+                            marginBottom: 10,
+                        }}
+                    >
+                        <Package size={14} strokeWidth={2} />
+                        Product Breakdown
+                    </h3>
+                    <div
+                        className="card"
+                        style={{ marginBottom: 20, padding: '4px 16px' }}
+                    >
+                        {Object.values(productBreakdown).map((p, i, arr) => (
+                            <div
+                                key={i}
+                                style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    padding: '10px 0',
+                                    borderBottom: i < arr.length - 1 ? '1px solid var(--border-subtle)' : 'none',
+                                }}
+                            >
+                                <div>
+                                    <span style={{ fontWeight: 600 }}>{p.name}</span>
+                                    <span
+                                        style={{
+                                            color: 'var(--text-secondary)',
+                                            marginLeft: 8,
+                                            fontSize: '0.85rem',
+                                            fontFamily: 'var(--font-mono)',
+                                        }}
+                                    >
+                                        {p.qty} {p.unit}
+                                    </span>
+                                </div>
+                                <span
+                                    className="amount-small amount-positive"
+                                    style={{ fontWeight: 500 }}
+                                >
+                                    ₹{p.amount.toFixed(2)}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                </>
+            )}
+
+            {/* Day-by-day entries */}
+            {Object.keys(entriesByDate).length > 0 && (
+                <>
+                    <h3
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            fontSize: '0.78rem',
+                            color: 'var(--text-secondary)',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.05em',
+                            fontWeight: 600,
+                            marginBottom: 10,
+                        }}
+                    >
+                        <Calendar size={14} strokeWidth={2} />
+                        Day-by-Day
+                    </h3>
+                    {Object.entries(entriesByDate).map(([date, dateEntries]) => (
+                        <div
+                            key={date}
+                            className="card"
+                            style={{ marginBottom: 10, padding: '10px 16px' }}
+                        >
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    fontSize: '0.8rem',
+                                    color: 'var(--brand-primary)',
+                                    fontWeight: 600,
+                                    fontFamily: 'var(--font-display)',
+                                    marginBottom: 6,
+                                    paddingBottom: 6,
+                                    borderBottom: '1px solid var(--border-subtle)',
+                                }}
+                            >
+                                <span>{formatDate(date)}</span>
+                                <span
+                                    className="amount-small amount-positive"
+                                    style={{ fontWeight: 500 }}
+                                >
+                                    ₹{dateEntries.reduce((s, e) => s + Number(e.line_total || 0), 0).toFixed(2)}
+                                </span>
+                            </div>
+                            {dateEntries.map((entry: any) => {
+                                const byName = entry.created_by_user?.name || entry.entered_by_user?.name;
+                                return (
+                                    <div
+                                        key={entry.id}
+                                        style={{
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            padding: '6px 0',
+                                            gap: 10,
+                                        }}
+                                    >
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div
+                                                style={{
+                                                    fontSize: '0.9rem',
+                                                    color: 'var(--text-primary)',
+                                                    fontWeight: 500,
+                                                }}
+                                            >
+                                                {entry.product?.name || 'Product'}
+                                                <span
+                                                    style={{
+                                                        fontFamily: 'var(--font-mono)',
+                                                        color: 'var(--text-secondary)',
+                                                        marginLeft: 6,
+                                                        fontSize: '0.8rem',
+                                                        fontWeight: 400,
+                                                    }}
+                                                >
+                                                    {Number(entry.quantity)}{entry.product?.unit || ''} × ₹{Number(entry.unit_price).toFixed(2)}
+                                                </span>
+                                            </div>
+                                            <div
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: 6,
+                                                    marginTop: 2,
+                                                    fontSize: '0.72rem',
+                                                    color: 'var(--text-muted)',
+                                                }}
+                                            >
+                                                {entry.source && (
+                                                    <span className="badge badge-muted">{entry.source}</span>
+                                                )}
+                                                {byName && <span>by {byName}</span>}
+                                            </div>
+                                        </div>
+                                        <span
+                                            className="amount-small amount-positive"
+                                            style={{ fontWeight: 500 }}
+                                        >
+                                            ₹{Number(entry.line_total).toFixed(2)}
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ))}
+                </>
+            )}
+
             {/* Edit Profile Modal */}
             {isEditing && (
-                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-                    <div className="card" style={{ width: '100%', maxWidth: '400px', padding: '24px' }}>
-                        <h2 style={{ marginBottom: '20px' }}>Edit Profile</h2>
+                <div className="modal-backdrop" onClick={() => setIsEditing(false)}>
+                    <div
+                        className="modal-content"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div
+                            style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                marginBottom: 16,
+                            }}
+                        >
+                            <h2 style={{ fontSize: '1.1rem' }}>Edit Profile</h2>
+                            <button
+                                className="icon-btn"
+                                onClick={() => setIsEditing(false)}
+                                aria-label="Close"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
                         <form onSubmit={handleEditSave}>
                             <div className="form-group">
                                 <label>Name</label>
                                 <input
                                     required
                                     value={editForm.name}
-                                    onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
                                 />
                             </div>
                             <div className="form-group">
@@ -159,7 +513,7 @@ export default function CustomerDetail() {
                                 <input
                                     type="tel"
                                     value={editForm.phone}
-                                    onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
+                                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
                                     placeholder="Optional"
                                 />
                             </div>
@@ -167,93 +521,41 @@ export default function CustomerDetail() {
                                 <label>Address</label>
                                 <textarea
                                     value={editForm.address}
-                                    onChange={e => setEditForm({ ...editForm, address: e.target.value })}
+                                    onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
                                     placeholder="Optional"
                                     rows={2}
                                 />
                             </div>
-                            <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
-                                <button type="button" className="btn btn-outline" style={{ flex: 1 }} onClick={() => setIsEditing(false)}>Cancel</button>
-                                <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={saving}>
-                                    {saving ? 'Saving...' : 'Save'}
+                            <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
+                                <button
+                                    type="button"
+                                    className="btn btn-outline"
+                                    style={{ flex: 1 }}
+                                    onClick={() => setIsEditing(false)}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="btn btn-primary"
+                                    style={{ flex: 1 }}
+                                    disabled={saving}
+                                >
+                                    {saving ? (
+                                        <>
+                                            <div className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
+                                            Saving…
+                                        </>
+                                    ) : (
+                                        <>
+                                            <CheckCircle2 size={16} strokeWidth={2} />
+                                            Save
+                                        </>
+                                    )}
                                 </button>
                             </div>
                         </form>
                     </div>
-                </div>
-            )}
-
-            {/* Month Picker */}
-            <div className="month-picker">
-                <button onClick={() => changeMonth(-1)}>◀</button>
-                <span>{monthName}</span>
-                <button onClick={() => changeMonth(1)}>▶</button>
-            </div>
-
-            {/* Monthly Total */}
-            {summary ? (
-                <div className="stat-card" style={{ marginBottom: '16px' }}>
-                    <div className="stat-value">₹{Number(summary.total_amount).toFixed(2)}</div>
-                    <div className="stat-label">
-                        {summary.entry_count} entries ·{' '}
-                        <span className={`badge ${summary.is_locked ? 'badge-locked' : 'badge-open'}`}>
-                            {summary.is_locked ? '🔒 Locked' : '🔓 Open'}
-                        </span>
-                    </div>
-                </div>
-            ) : (
-                <div className="empty-state" style={{ padding: '24px' }}>
-                    <p>No entries for {monthName}</p>
-                </div>
-            )}
-
-            {/* Product-wise Breakdown */}
-            {Object.keys(productBreakdown).length > 0 && (
-                <div className="card" style={{ marginBottom: '16px' }}>
-                    <h3 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '12px' }}>
-                        📦 Product Breakdown
-                    </h3>
-                    {Object.values(productBreakdown).map((p, i) => (
-                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: i < Object.keys(productBreakdown).length - 1 ? '1px solid var(--border)' : 'none' }}>
-                            <div>
-                                <span style={{ fontWeight: 700 }}>{p.name}</span>
-                                <span style={{ color: 'var(--text-secondary)', marginLeft: '8px', fontSize: '0.9rem' }}>
-                                    {p.qty} {p.unit}
-                                </span>
-                            </div>
-                            <span style={{ fontWeight: 700, color: 'var(--success)' }}>₹{p.amount.toFixed(2)}</span>
-                        </div>
-                    ))}
-                </div>
-            )}
-
-            {/* Day-by-Day Entries */}
-            {Object.keys(entriesByDate).length > 0 && (
-                <div>
-                    <h3 style={{ marginBottom: '12px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                        📅 Day-by-Day Entries
-                    </h3>
-                    {Object.entries(entriesByDate).map(([date, dateEntries]) => (
-                        <div key={date} className="card" style={{ marginBottom: '10px' }}>
-                            <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--accent)', marginBottom: '8px', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
-                                {formatDate(date)}
-                            </div>
-                            {dateEntries.map((entry: any) => (
-                                <div key={entry.id} className="entry-item">
-                                    <div className="entry-info">
-                                        <h4>{entry.product?.name || 'Product'}</h4>
-                                        <p>{Number(entry.quantity)} {entry.product?.unit} × ₹{Number(entry.unit_price).toFixed(2)}</p>
-                                        {entry.created_by_user?.name && (
-                                            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                                                {entry.source_channel} · by {entry.entered_by_user.name}
-                                            </p>
-                                        )}
-                                    </div>
-                                    <span className="entry-amount">₹{Number(entry.line_total).toFixed(2)}</span>
-                                </div>
-                            ))}
-                        </div>
-                    ))}
                 </div>
             )}
         </div>

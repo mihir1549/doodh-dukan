@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { customerApi, productApi, entryApi } from '../api';
 import { useAuth } from '../AuthContext';
+import { avatarColor, avatarLetter } from '../utils/avatar';
 
 const SCROLL_CONTAINER_ID = 'customer-list-scroll-container';
 
@@ -24,24 +25,6 @@ const getErrorMessage = (err: any) => {
     if (Array.isArray(message)) return message.join(', ');
     return message || 'Failed to save entry';
 };
-
-// Generate consistent avatar color from name
-const AVATAR_COLORS = [
-    { bg: 'rgba(59, 130, 246, 0.2)',  fg: '#60a5fa' },
-    { bg: 'rgba(16, 185, 129, 0.2)',  fg: '#34d399' },
-    { bg: 'rgba(245, 158, 11, 0.2)',  fg: '#fbbf24' },
-    { bg: 'rgba(236, 72, 153, 0.2)',  fg: '#f472b6' },
-    { bg: 'rgba(139, 92, 246, 0.2)',  fg: '#a78bfa' },
-    { bg: 'rgba(6, 182, 212, 0.2)',   fg: '#22d3ee' },
-    { bg: 'rgba(239, 68, 68, 0.2)',   fg: '#f87171' },
-    { bg: 'rgba(168, 85, 247, 0.2)',  fg: '#c084fc' },
-];
-function avatarColor(name?: string) {
-    if (!name) return AVATAR_COLORS[0];
-    let h = 0;
-    for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
-    return AVATAR_COLORS[h % AVATAR_COLORS.length];
-}
 
 const formatDate = (d: string) => {
     if (!d) return '';
@@ -388,7 +371,7 @@ export default function AddEntry() {
                         >
                             {filteredCustomers.map((c) => {
                                 const color = avatarColor(c.name);
-                                const letter = c.name?.charAt(0)?.toUpperCase() || '?';
+                                const letter = avatarLetter(c.name);
                                 const address = (c.address || '').trim();
                                 const shortAddress = address.length > 30 ? address.slice(0, 30) + '…' : address;
                                 return (
