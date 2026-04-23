@@ -1,4 +1,7 @@
 import { useState } from 'react';
+import {
+    X, CheckCircle2, ArrowUpRight, ArrowDownLeft, Wallet,
+} from 'lucide-react';
 import { ledgerApi } from '../api';
 
 interface Props {
@@ -10,6 +13,33 @@ interface Props {
 
 const GO_LIVE = '2026-05-01';
 
+const TYPES = [
+    {
+        val: 'ZERO' as const,
+        label: 'Zero',
+        desc: 'No balance',
+        icon: CheckCircle2,
+        color: 'var(--brand-primary)',
+        bg: 'var(--brand-primary-glow)',
+    },
+    {
+        val: 'DEBIT' as const,
+        label: 'Owes',
+        desc: 'Customer owes',
+        icon: ArrowUpRight,
+        color: 'var(--danger)',
+        bg: 'var(--danger-bg)',
+    },
+    {
+        val: 'CREDIT' as const,
+        label: 'Advance',
+        desc: 'Has credit',
+        icon: ArrowDownLeft,
+        color: 'var(--success)',
+        bg: 'var(--success-bg)',
+    },
+];
+
 export default function SetOpeningBalanceModal({ customerId, customerName, onSuccess, onClose }: Props) {
     const [type, setType] = useState<'DEBIT' | 'CREDIT' | 'ZERO'>('ZERO');
     const [amount, setAmount] = useState('');
@@ -19,12 +49,19 @@ export default function SetOpeningBalanceModal({ customerId, customerName, onSuc
     const [error, setError] = useState('');
 
     const handleSubmit = async () => {
-        if (type === 'ZERO') { onSuccess(); return; }
-
+        if (type === 'ZERO') {
+            onSuccess();
+            return;
+        }
         const amt = parseFloat(amount);
-        if (!amt || amt <= 0) { setError('Enter a valid amount'); return; }
-        if (!date) { setError('Date is required'); return; }
-
+        if (!amt || amt <= 0) {
+            setError('Enter a valid amount');
+            return;
+        }
+        if (!date) {
+            setError('Date is required');
+            return;
+        }
         setSaving(true);
         setError('');
         try {
@@ -44,53 +81,85 @@ export default function SetOpeningBalanceModal({ customerId, customerName, onSuc
     };
 
     return (
-        <div style={{
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            zIndex: 1000, padding: '20px',
-        }}>
-            <div className="card" style={{ width: '100%', maxWidth: '420px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                    <h3>Opening Balance</h3>
-                    <button style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '1.4rem', cursor: 'pointer' }} onClick={onClose}>✕</button>
+        <div className="modal-backdrop" onClick={onClose}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                <div
+                    style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        marginBottom: 6,
+                    }}
+                >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div
+                            style={{
+                                width: 32,
+                                height: 32,
+                                borderRadius: 8,
+                                background: 'var(--brand-primary-glow)',
+                                color: 'var(--brand-primary)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                            }}
+                        >
+                            <Wallet size={18} strokeWidth={2} />
+                        </div>
+                        <h3 style={{ fontSize: '1.05rem' }}>Opening Balance</h3>
+                    </div>
+                    <button
+                        className="icon-btn"
+                        onClick={onClose}
+                        aria-label="Close"
+                    >
+                        <X size={18} />
+                    </button>
                 </div>
 
-                <div style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginBottom: '14px' }}>
+                <div
+                    style={{
+                        color: 'var(--text-secondary)',
+                        fontSize: '0.85rem',
+                        marginBottom: 16,
+                    }}
+                >
                     {customerName}
                 </div>
 
                 <div className="form-group">
                     <label>Balance Type</label>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                        {([
-                            { val: 'ZERO', label: '✓ Zero', desc: 'No balance' },
-                            { val: 'DEBIT', label: '↑ Owes', desc: 'Customer owes money' },
-                            { val: 'CREDIT', label: '↓ Advance', desc: 'Customer has advance' },
-                        ] as const).map(({ val, label }) => (
-                            <button
-                                key={val}
-                                onClick={() => setType(val)}
-                                style={{
-                                    flex: 1,
-                                    padding: '10px 4px',
-                                    borderRadius: 'var(--radius-sm)',
-                                    border: `2px solid ${type === val
-                                        ? val === 'DEBIT' ? 'var(--danger)' : val === 'CREDIT' ? 'var(--success)' : 'var(--accent)'
-                                        : 'var(--border)'}`,
-                                    background: type === val
-                                        ? val === 'DEBIT' ? 'var(--danger-light)' : val === 'CREDIT' ? 'var(--success-light)' : 'var(--accent-light)'
-                                        : 'var(--bg-input)',
-                                    color: type === val
-                                        ? val === 'DEBIT' ? 'var(--danger)' : val === 'CREDIT' ? 'var(--success)' : 'var(--text-accent)'
-                                        : 'var(--text-secondary)',
-                                    cursor: 'pointer',
-                                    fontSize: '0.82rem',
-                                    fontWeight: type === val ? 700 : 400,
-                                }}
-                            >
-                                {label}
-                            </button>
-                        ))}
+                    <div style={{ display: 'flex', gap: 6 }}>
+                        {TYPES.map(({ val, label, icon: Icon, color, bg }) => {
+                            const active = type === val;
+                            return (
+                                <button
+                                    key={val}
+                                    onClick={() => setType(val)}
+                                    style={{
+                                        flex: 1,
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: 4,
+                                        padding: '10px 4px',
+                                        borderRadius: 'var(--radius-md)',
+                                        border: `1px solid ${active ? color : 'var(--border-subtle)'}`,
+                                        background: active ? bg : 'var(--bg-elevated)',
+                                        color: active ? color : 'var(--text-secondary)',
+                                        cursor: 'pointer',
+                                        fontSize: '0.82rem',
+                                        fontWeight: active ? 700 : 500,
+                                        fontFamily: 'var(--font-display)',
+                                        transition: 'all 0.15s',
+                                    }}
+                                >
+                                    <Icon size={18} strokeWidth={1.75} />
+                                    {label}
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
 
@@ -106,6 +175,11 @@ export default function SetOpeningBalanceModal({ customerId, customerName, onSuc
                                 placeholder="0.00"
                                 min="0.01"
                                 step="0.01"
+                                style={{
+                                    fontFamily: 'var(--font-mono)',
+                                    fontSize: '1.2rem',
+                                    textAlign: 'center',
+                                }}
                             />
                         </div>
 
@@ -115,6 +189,7 @@ export default function SetOpeningBalanceModal({ customerId, customerName, onSuc
                                 type="date"
                                 value={date}
                                 onChange={(e) => setDate(e.target.value)}
+                                style={{ fontFamily: 'var(--font-mono)' }}
                             />
                         </div>
 
@@ -129,21 +204,38 @@ export default function SetOpeningBalanceModal({ customerId, customerName, onSuc
                     </>
                 )}
 
-                {error && (
-                    <div style={{ color: 'var(--danger)', fontSize: '0.85rem', marginBottom: '12px' }}>
-                        {error}
-                    </div>
-                )}
+                {error && <div className="error-msg">{error}</div>}
 
-                <div style={{ display: 'flex', gap: '10px' }}>
-                    <button className="btn btn-outline" style={{ flex: 1 }} onClick={onClose}>Cancel</button>
+                <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+                    <button
+                        className="btn btn-outline"
+                        style={{ flex: 1 }}
+                        onClick={onClose}
+                    >
+                        Cancel
+                    </button>
                     <button
                         className="btn btn-primary"
                         style={{ flex: 2 }}
                         disabled={saving}
                         onClick={handleSubmit}
                     >
-                        {saving ? '⏳ Saving...' : type === 'ZERO' ? 'Set as Zero' : 'Save Opening Balance'}
+                        {saving ? (
+                            <>
+                                <div
+                                    className="spinner"
+                                    style={{ width: 14, height: 14, borderWidth: 2 }}
+                                />
+                                Saving…
+                            </>
+                        ) : type === 'ZERO' ? (
+                            'Set as Zero'
+                        ) : (
+                            <>
+                                <CheckCircle2 size={16} strokeWidth={2} />
+                                Save Opening Balance
+                            </>
+                        )}
                     </button>
                 </div>
             </div>

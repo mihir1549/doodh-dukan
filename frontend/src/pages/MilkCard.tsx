@@ -1,4 +1,9 @@
 import { useState, useEffect } from 'react';
+import {
+    Milk, BookOpen, Settings as SettingsIcon, LogOut, X,
+    CheckCircle2, Clock, XCircle, ArrowUpRight, ArrowDownLeft,
+    Lock, Unlock,
+} from 'lucide-react';
 import { useAuth } from '../AuthContext';
 import { entryApi, summaryApi, userApi, ledgerApi } from '../api';
 
@@ -31,7 +36,7 @@ function formatAmount(n: number) {
 export default function MilkCard() {
     const { user, logout } = useAuth();
     const [tab, setTab] = useState<Tab>('CARD');
-    const [month, setMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
+    const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
     const [entries, setEntries] = useState<any[]>([]);
     const [summary, setSummary] = useState<any>(null);
     const [loading, setLoading] = useState(true);
@@ -47,15 +52,11 @@ export default function MilkCard() {
     const [pinStatus, setPinStatus] = useState({ loading: false, error: '', success: '' });
 
     useEffect(() => {
-        if (user?.customer_id && tab === 'CARD') {
-            loadData();
-        }
+        if (user?.customer_id && tab === 'CARD') loadData();
     }, [month, user, tab]);
 
     useEffect(() => {
-        if (user?.customer_id && tab === 'PASSBOOK' && !passbookLoaded) {
-            loadPassbook();
-        }
+        if (user?.customer_id && tab === 'PASSBOOK' && !passbookLoaded) loadPassbook();
     }, [tab, user, passbookLoaded]);
 
     const loadData = async () => {
@@ -63,7 +64,7 @@ export default function MilkCard() {
         try {
             const [entriesRes, summaryRes] = await Promise.all([
                 entryApi.listByMonth(month, user?.customer_id),
-                summaryApi.list(month, user?.customer_id)
+                summaryApi.list(month, user?.customer_id),
             ]);
             setEntries(entriesRes.data?.data || []);
             setSummary(summaryRes.data?.data?.[0] || null);
@@ -92,16 +93,14 @@ export default function MilkCard() {
         }
     };
 
-    // Helper to get days in month
     const getDaysInMonth = (yearMonth: string) => {
-        const [year, month] = yearMonth.split('-').map(Number);
-        return new Date(year, month, 0).getDate();
+        const [year, m] = yearMonth.split('-').map(Number);
+        return new Date(year, m, 0).getDate();
     };
 
     const daysCount = getDaysInMonth(month);
     const dayRows = Array.from({ length: daysCount }, (_, i) => i + 1);
 
-    // Group entries by day
     const entriesByDay = entries.reduce((acc: any, entry: any) => {
         const day = new Date(entry.entry_date).getDate();
         if (!acc[day]) acc[day] = [];
@@ -118,299 +117,558 @@ export default function MilkCard() {
         try {
             await userApi.changePassword(pinData);
             setPinStatus({ loading: false, error: '', success: 'Password changed successfully! Please login again.' });
-            setTimeout(() => {
-                logout();
-            }, 2000);
+            setTimeout(() => logout(), 2000);
         } catch (err: any) {
             setPinStatus({ loading: false, error: err.response?.data?.message || 'Failed to change password', success: '' });
         }
     };
 
+    const oweTopChip =
+        passbookBalance > 0 ? (
+            <div
+                style={{
+                    background: 'var(--danger-bg)',
+                    border: `1px solid var(--danger)`,
+                    borderRadius: 'var(--radius-md)',
+                    padding: '8px 12px',
+                    marginBottom: 16,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    fontSize: '0.85rem',
+                    color: 'var(--danger)',
+                    fontWeight: 600,
+                }}
+            >
+                <ArrowUpRight size={16} strokeWidth={2} />
+                <span>Balance due:</span>
+                <span style={{ fontFamily: 'var(--font-mono)', marginLeft: 'auto' }}>
+                    {formatAmount(passbookBalance)}
+                </span>
+            </div>
+        ) : null;
+
     return (
-        <div className="page" style={{ padding: '16px', maxWidth: '600px', margin: '0 auto' }}>
-            <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <div>
-                    <h1 style={{ fontSize: '1.5rem', margin: 0 }}>My Milk Card</h1>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{user?.shop_name}</p>
-                </div>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                    <button
-                        onClick={() => setShowSettings(true)}
-                        style={{ background: 'var(--bg-card)', color: 'var(--text-primary)', border: '1px solid var(--border)', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}
+        <div className="page">
+            <div className="page-header">
+                <div style={{ flex: 1, minWidth: 0 }}>
+                    <h1 style={{ fontSize: '1.15rem' }}>My Milk Card</h1>
+                    <p
+                        style={{
+                            color: 'var(--text-secondary)',
+                            fontSize: '0.78rem',
+                            marginTop: 2,
+                        }}
                     >
-                        ⚙️ <span className="hide-mobile">Profile</span>
+                        {user?.shop_name}
+                    </p>
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                    <button
+                        className="icon-btn"
+                        onClick={() => setShowSettings(true)}
+                        aria-label="Profile settings"
+                        title="Profile"
+                    >
+                        <SettingsIcon size={18} strokeWidth={1.75} />
                     </button>
                     <button
+                        className="icon-btn"
                         onClick={logout}
-                        style={{ background: 'var(--danger-light)', color: 'var(--danger)', border: 'none', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}
+                        aria-label="Logout"
+                        title="Logout"
+                        style={{ color: 'var(--danger)' }}
                     >
-                        Logout
+                        <LogOut size={18} strokeWidth={1.75} />
                     </button>
                 </div>
             </div>
+
+            {/* Balance chip at top if owing */}
+            {oweTopChip}
 
             {/* Tab Switcher */}
-            <div style={{
-                display: 'flex',
-                background: 'var(--bg-card)',
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--border)',
-                padding: '4px',
-                marginBottom: '20px',
-                gap: '4px',
-            }}>
-                <button
-                    onClick={() => setTab('CARD')}
-                    style={{
-                        flex: 1,
-                        padding: '10px',
-                        border: 'none',
-                        borderRadius: 'var(--radius-sm)',
-                        background: tab === 'CARD' ? 'var(--accent)' : 'transparent',
-                        color: tab === 'CARD' ? '#fff' : 'var(--text-secondary)',
-                        fontWeight: tab === 'CARD' ? 700 : 500,
-                        cursor: 'pointer',
-                        fontSize: '0.95rem',
-                        transition: 'all 0.15s',
-                    }}
-                >
-                    🥛 My Card
-                </button>
-                <button
-                    onClick={() => setTab('PASSBOOK')}
-                    style={{
-                        flex: 1,
-                        padding: '10px',
-                        border: 'none',
-                        borderRadius: 'var(--radius-sm)',
-                        background: tab === 'PASSBOOK' ? 'var(--accent)' : 'transparent',
-                        color: tab === 'PASSBOOK' ? '#fff' : 'var(--text-secondary)',
-                        fontWeight: tab === 'PASSBOOK' ? 700 : 500,
-                        cursor: 'pointer',
-                        fontSize: '0.95rem',
-                        transition: 'all 0.15s',
-                    }}
-                >
-                    📒 My Passbook
-                </button>
+            <div
+                style={{
+                    display: 'flex',
+                    background: 'var(--bg-surface)',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid var(--border-subtle)',
+                    padding: 4,
+                    marginBottom: 20,
+                    gap: 4,
+                }}
+            >
+                {(['CARD', 'PASSBOOK'] as const).map((t) => {
+                    const active = tab === t;
+                    const label = t === 'CARD' ? 'My Card' : 'My Passbook';
+                    const Icon = t === 'CARD' ? Milk : BookOpen;
+                    return (
+                        <button
+                            key={t}
+                            onClick={() => setTab(t)}
+                            style={{
+                                flex: 1,
+                                padding: '10px',
+                                border: 'none',
+                                borderRadius: 'var(--radius-sm)',
+                                background: active ? 'var(--brand-primary)' : 'transparent',
+                                color: active ? '#fff' : 'var(--text-secondary)',
+                                fontWeight: active ? 700 : 500,
+                                fontFamily: 'var(--font-display)',
+                                cursor: 'pointer',
+                                fontSize: '0.9rem',
+                                transition: 'all 0.15s',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 6,
+                            }}
+                        >
+                            <Icon size={16} strokeWidth={2} />
+                            {label}
+                        </button>
+                    );
+                })}
             </div>
-
-            {/* Month Selector — only on Card tab */}
-            {tab === 'CARD' && (
-                <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-                    <input
-                        type="month"
-                        value={month}
-                        onChange={(e) => setMonth(e.target.value)}
-                        style={{
-                            flex: 1, padding: '12px', borderRadius: 'var(--radius-md)',
-                            border: '1px solid var(--border)', background: 'var(--bg-card)',
-                            color: 'var(--text-primary)', fontSize: '1rem'
-                        }}
-                    />
-                </div>
-            )}
 
             {/* ========== CARD TAB ========== */}
             {tab === 'CARD' && (
-            <>
-            {/* Summary Info */}
-            <div style={{
-                display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '24px'
-            }}>
-                <div style={{ background: 'var(--bg-card)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>This Month Total</div>
-                    <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--success)' }}>
-                        ₹{summary?.total_amount?.toFixed(2) || '0.00'}
-                    </div>
-                </div>
-                <div style={{ background: 'var(--primary-light)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--primary-border)', borderLeft: '4px solid var(--accent)' }}>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--accent)' }}>Status</div>
-                    <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>
-                        {summary?.is_locked ? '✅ PAID' : '🕒 PENDING'}
-                    </div>
-                </div>
-            </div>
-
-            {loading ? (
-                <div className="loading"><div className="spinner" /></div>
-            ) : (
-                <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', overflow: 'hidden' }}>
-                    <div style={{
-                        display: 'grid', gridTemplateColumns: '50px 1fr 60px 70px',
-                        padding: '12px', background: 'var(--bg-page)', borderBottom: '2px solid var(--border)',
-                        fontWeight: 700, fontSize: '0.8rem', textAlign: 'left', color: 'var(--text-secondary)'
-                    }}>
-                        <div style={{ textAlign: 'center' }}>DATE</div>
-                        <div>DETAILS</div>
-                        <div style={{ textAlign: 'center' }}>BY</div>
-                        <div style={{ textAlign: 'right' }}>TIME</div>
+                <>
+                    {/* Month selector */}
+                    <div style={{ marginBottom: 16 }}>
+                        <input
+                            type="month"
+                            value={month}
+                            onChange={(e) => setMonth(e.target.value)}
+                            style={{ fontFamily: 'var(--font-display)', textAlign: 'center' }}
+                        />
                     </div>
 
-                    <div style={{ maxHeight: '60vh', overflowY: 'auto' }}>
-                        {dayRows.map(day => {
-                            const dayEntries = entriesByDay[day] || [];
-                            const hasMilk = dayEntries.length > 0;
-
-                            // Aggregate products by ID
-                            const productTotals: Record<string, { qty: number; name: string; category: string }> = {};
-                            dayEntries.forEach((e: any) => {
-                                const pid = e.product?.id || 'unknown';
-                                if (!productTotals[pid]) {
-                                    productTotals[pid] = { qty: 0, name: e.product?.name || 'Item', category: e.product?.category || '' };
-                                }
-                                productTotals[pid].qty += Number(e.quantity);
-                            });
-
-                            const detailsStr = Object.values(productTotals).map(p => {
-                                const qtyNum = Number(p.qty);
-                                const isLoose = p.name.toLowerCase().includes('loose') || p.category === 'LOOSE_MILK';
-                                if (isLoose) {
-                                    return `${qtyNum.toFixed(1)}L`;
-                                } else {
-                                    return `${qtyNum}${p.name.split(' ')[0]}`;
-                                }
-                            }).join(', ');
-
-                            const createdBy = hasMilk && dayEntries[dayEntries.length - 1].entered_by_user?.name
-                                ? dayEntries[dayEntries.length - 1].entered_by_user.name.split(' ')[0]
-                                : '-';
-
-                            return (
-                                <div key={day} style={{
-                                    display: 'grid', gridTemplateColumns: '50px 1fr 60px 70px',
-                                    padding: '12px', borderBottom: '1px solid var(--border)',
-                                    alignItems: 'center', fontSize: '1rem',
-                                    background: hasMilk ? 'transparent' : 'rgba(239, 68, 68, 0.05)'
-                                }}>
-                                    <div style={{ fontWeight: 700, color: 'var(--text-muted)', textAlign: 'center' }}>{day}</div>
-
-                                    <div style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.9rem' }}>
-                                        {hasMilk ? detailsStr : <span style={{ color: 'var(--danger)', fontSize: '0.75rem' }}>✕</span>}
-                                    </div>
-
-                                    <div style={{ color: 'var(--text-muted)', fontWeight: 500, fontSize: '0.75rem', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                        {createdBy}
-                                    </div>
-
-                                    <div style={{ color: 'var(--text-muted)', fontWeight: 500, fontSize: '0.75rem', textAlign: 'right' }}>
-                                        {hasMilk ? (
-                                            new Date(dayEntries[dayEntries.length - 1].created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
-                                        ) : '-'}
-                                    </div>
-                                </div>
-                            );
-                        })}
+                    {/* Summary */}
+                    <div
+                        style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(2, 1fr)',
+                            gap: 10,
+                            marginBottom: 20,
+                        }}
+                    >
+                        <div className="stat-card">
+                            <div
+                                style={{
+                                    fontSize: '0.72rem',
+                                    color: 'var(--text-secondary)',
+                                    fontWeight: 600,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.05em',
+                                }}
+                            >
+                                This Month
+                            </div>
+                            <div className="amount-medium amount-positive" style={{ marginTop: 4 }}>
+                                ₹{Number(summary?.total_amount ?? 0).toFixed(2)}
+                            </div>
+                        </div>
+                        <div
+                            className="stat-card"
+                            style={{ borderLeftColor: summary?.is_locked ? 'var(--success)' : 'var(--warning)' }}
+                        >
+                            <div
+                                style={{
+                                    fontSize: '0.72rem',
+                                    color: 'var(--text-secondary)',
+                                    fontWeight: 600,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.05em',
+                                }}
+                            >
+                                Status
+                            </div>
+                            <div style={{ marginTop: 6 }}>
+                                <span className={summary?.is_locked ? 'badge badge-success' : 'badge badge-warning'}>
+                                    {summary?.is_locked ? (
+                                        <>
+                                            <Lock size={10} strokeWidth={2} /> Locked
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Unlock size={10} strokeWidth={2} /> Open
+                                        </>
+                                    )}
+                                </span>
+                            </div>
+                        </div>
                     </div>
-                </div>
 
-            )}
+                    {loading ? (
+                        <div className="loading"><div className="spinner" /></div>
+                    ) : (
+                        <div
+                            style={{
+                                background: 'var(--bg-surface)',
+                                borderRadius: 'var(--radius-lg)',
+                                border: '1px solid var(--border-subtle)',
+                                overflow: 'hidden',
+                            }}
+                        >
+                            <div
+                                style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: '40px 1fr 60px 60px',
+                                    padding: '10px 14px',
+                                    background: 'var(--bg-elevated)',
+                                    borderBottom: '1px solid var(--border-subtle)',
+                                    fontWeight: 700,
+                                    fontSize: '0.7rem',
+                                    color: 'var(--text-muted)',
+                                    letterSpacing: '0.05em',
+                                    textTransform: 'uppercase',
+                                }}
+                            >
+                                <div style={{ textAlign: 'center' }}>Date</div>
+                                <div>Details</div>
+                                <div style={{ textAlign: 'center' }}>By</div>
+                                <div style={{ textAlign: 'right' }}>Time</div>
+                            </div>
 
-            <p style={{ marginTop: '20px', textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                Showing entries for {new Date(month).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}
-            </p>
-            </>
+                            <div style={{ maxHeight: '58vh', overflowY: 'auto' }}>
+                                {dayRows.map((day) => {
+                                    const dayEntries = entriesByDay[day] || [];
+                                    const hasMilk = dayEntries.length > 0;
+
+                                    const productTotals: Record<string, { qty: number; name: string; category: string }> = {};
+                                    dayEntries.forEach((e: any) => {
+                                        const pid = e.product?.id || 'unknown';
+                                        if (!productTotals[pid]) {
+                                            productTotals[pid] = {
+                                                qty: 0,
+                                                name: e.product?.name || 'Item',
+                                                category: e.product?.category || '',
+                                            };
+                                        }
+                                        productTotals[pid].qty += Number(e.quantity);
+                                    });
+
+                                    const detailsStr = Object.values(productTotals)
+                                        .map((p) => {
+                                            const qtyNum = Number(p.qty);
+                                            const isLoose =
+                                                p.name.toLowerCase().includes('loose') ||
+                                                p.category === 'LOOSE_MILK';
+                                            return isLoose
+                                                ? `${qtyNum.toFixed(1)}L`
+                                                : `${qtyNum}${p.name.split(' ')[0]}`;
+                                        })
+                                        .join(', ');
+
+                                    const lastEntry = dayEntries[dayEntries.length - 1];
+                                    const createdBy =
+                                        hasMilk && (lastEntry?.entered_by_user?.name || lastEntry?.created_by_user?.name)
+                                            ? (lastEntry.entered_by_user?.name || lastEntry.created_by_user?.name).split(' ')[0]
+                                            : '—';
+
+                                    return (
+                                        <div
+                                            key={day}
+                                            style={{
+                                                display: 'grid',
+                                                gridTemplateColumns: '40px 1fr 60px 60px',
+                                                padding: '10px 14px',
+                                                borderBottom: '1px solid var(--border-subtle)',
+                                                alignItems: 'center',
+                                                fontSize: '0.88rem',
+                                                background: hasMilk ? 'transparent' : 'rgba(255,255,255,0.015)',
+                                            }}
+                                        >
+                                            <div
+                                                style={{
+                                                    fontFamily: 'var(--font-mono)',
+                                                    fontWeight: 500,
+                                                    color: hasMilk ? 'var(--text-secondary)' : 'var(--text-muted)',
+                                                    textAlign: 'center',
+                                                }}
+                                            >
+                                                {day}
+                                            </div>
+                                            <div
+                                                style={{
+                                                    color: hasMilk ? 'var(--text-primary)' : 'var(--text-muted)',
+                                                    fontWeight: hasMilk ? 500 : 400,
+                                                    fontSize: '0.88rem',
+                                                    fontFamily: hasMilk ? 'var(--font-mono)' : 'var(--font-body)',
+                                                }}
+                                            >
+                                                {hasMilk ? detailsStr : '—'}
+                                            </div>
+                                            <div
+                                                style={{
+                                                    color: 'var(--text-muted)',
+                                                    fontWeight: 400,
+                                                    fontSize: '0.72rem',
+                                                    textAlign: 'center',
+                                                    whiteSpace: 'nowrap',
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis',
+                                                }}
+                                            >
+                                                {createdBy}
+                                            </div>
+                                            <div
+                                                style={{
+                                                    color: 'var(--text-muted)',
+                                                    fontWeight: 400,
+                                                    fontSize: '0.72rem',
+                                                    textAlign: 'right',
+                                                    fontFamily: 'var(--font-mono)',
+                                                }}
+                                            >
+                                                {hasMilk && lastEntry?.created_at
+                                                    ? new Date(lastEntry.created_at).toLocaleTimeString('en-IN', {
+                                                        hour: '2-digit',
+                                                        minute: '2-digit',
+                                                        hour12: false,
+                                                    })
+                                                    : '—'}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
+                    <p
+                        style={{
+                            marginTop: 16,
+                            textAlign: 'center',
+                            fontSize: '0.78rem',
+                            color: 'var(--text-muted)',
+                        }}
+                    >
+                        Showing entries for {new Date(month).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}
+                    </p>
+                </>
             )}
 
             {/* ========== PASSBOOK TAB ========== */}
             {tab === 'PASSBOOK' && (
                 <>
-                    {/* Balance Card */}
-                    <div style={{
-                        background: passbookBalance > 0 ? 'var(--danger-light)' : passbookBalance < 0 ? 'var(--success-light)' : 'var(--bg-card)',
-                        border: `1px solid ${passbookBalance > 0 ? 'var(--danger)' : passbookBalance < 0 ? 'var(--success)' : 'var(--border)'}`,
-                        borderRadius: 'var(--radius-md)',
-                        padding: '20px',
-                        marginBottom: '20px',
-                        textAlign: 'center',
-                    }}>
+                    {/* Balance card */}
+                    <div
+                        style={{
+                            background:
+                                passbookBalance > 0
+                                    ? 'var(--danger-bg)'
+                                    : passbookBalance < 0
+                                        ? 'var(--success-bg)'
+                                        : 'var(--bg-elevated)',
+                            border: `1px solid ${
+                                passbookBalance > 0
+                                    ? 'var(--danger)'
+                                    : passbookBalance < 0
+                                        ? 'var(--success)'
+                                        : 'var(--border-subtle)'
+                            }`,
+                            borderRadius: 'var(--radius-lg)',
+                            padding: '20px',
+                            marginBottom: 16,
+                            textAlign: 'center',
+                        }}
+                    >
                         {passbookBalance > 0 ? (
                             <>
-                                <div style={{ fontSize: '0.85rem', color: 'var(--danger)', fontWeight: 600, marginBottom: '4px' }}>You owe</div>
-                                <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--danger)' }}>
+                                <div
+                                    style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: 6,
+                                        fontSize: '0.72rem',
+                                        color: 'var(--danger)',
+                                        fontWeight: 600,
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.05em',
+                                        marginBottom: 6,
+                                    }}
+                                >
+                                    <ArrowUpRight size={13} strokeWidth={2} />
+                                    You owe
+                                </div>
+                                <div className="amount-large" style={{ color: 'var(--danger)' }}>
                                     {formatAmount(passbookBalance)}
                                 </div>
                             </>
                         ) : passbookBalance < 0 ? (
                             <>
-                                <div style={{ fontSize: '0.85rem', color: 'var(--success)', fontWeight: 600, marginBottom: '4px' }}>Advance (credit)</div>
-                                <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--success)' }}>
+                                <div
+                                    style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: 6,
+                                        fontSize: '0.72rem',
+                                        color: 'var(--success)',
+                                        fontWeight: 600,
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.05em',
+                                        marginBottom: 6,
+                                    }}
+                                >
+                                    <ArrowDownLeft size={13} strokeWidth={2} />
+                                    Advance (credit)
+                                </div>
+                                <div className="amount-large" style={{ color: 'var(--success)' }}>
                                     {formatAmount(passbookBalance)}
                                 </div>
                             </>
                         ) : (
                             <>
-                                <div style={{ fontSize: '0.85rem', color: 'var(--success)', fontWeight: 600, marginBottom: '4px' }}>Status</div>
-                                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--success)' }}>
-                                    All settled ✅
+                                <div
+                                    style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: 6,
+                                        fontSize: '0.72rem',
+                                        color: 'var(--success)',
+                                        fontWeight: 600,
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.05em',
+                                        marginBottom: 6,
+                                    }}
+                                >
+                                    <CheckCircle2 size={13} strokeWidth={2} />
+                                    All settled
+                                </div>
+                                <div className="amount-large" style={{ color: 'var(--success)' }}>
+                                    ₹0
                                 </div>
                             </>
                         )}
                     </div>
 
-                    {/* Passbook Table */}
                     {passbookLoading ? (
                         <div className="loading"><div className="spinner" /></div>
                     ) : passbookEntries.length === 0 ? (
-                        <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)' }}>
-                            <div style={{ fontSize: '2.5rem', marginBottom: '10px' }}>📒</div>
-                            <p>No passbook entries yet</p>
+                        <div className="empty-state">
+                            <BookOpen size={40} style={{ opacity: 0.4 }} />
+                            <p style={{ marginTop: 8 }}>No passbook entries yet</p>
                         </div>
                     ) : (
-                        <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', overflow: 'hidden' }}>
-                            <div style={{
-                                display: 'grid',
-                                gridTemplateColumns: '70px 1fr 80px 80px',
-                                gap: '4px',
-                                padding: '10px',
-                                background: 'var(--bg-secondary)',
-                                fontSize: '0.72rem',
-                                color: 'var(--text-muted)',
-                                fontWeight: 700,
-                                borderBottom: '1px solid var(--border)',
-                            }}>
-                                <span>DATE</span>
-                                <span>DESCRIPTION</span>
-                                <span style={{ textAlign: 'right' }}>DEBIT</span>
-                                <span style={{ textAlign: 'right' }}>CREDIT</span>
+                        <div
+                            style={{
+                                background: 'var(--bg-surface)',
+                                borderRadius: 'var(--radius-lg)',
+                                border: '1px solid var(--border-subtle)',
+                                overflow: 'hidden',
+                            }}
+                        >
+                            <div
+                                style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: '62px 1fr 78px 78px',
+                                    gap: 4,
+                                    padding: '10px 14px',
+                                    background: 'var(--bg-elevated)',
+                                    fontSize: '0.7rem',
+                                    color: 'var(--text-muted)',
+                                    fontWeight: 700,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.05em',
+                                    borderBottom: '1px solid var(--border-subtle)',
+                                }}
+                            >
+                                <span>Date</span>
+                                <span>Description</span>
+                                <span style={{ textAlign: 'right' }}>Debit</span>
+                                <span style={{ textAlign: 'right' }}>Credit</span>
                             </div>
 
-                            <div style={{ maxHeight: '60vh', overflowY: 'auto' }}>
-                                {passbookEntries.map((e) => {
+                            <div style={{ maxHeight: '58vh', overflowY: 'auto' }}>
+                                {passbookEntries.map((e, idx) => {
                                     const isDebit = e.direction === 'DEBIT';
                                     const isRejected = e.status === 'REJECTED';
                                     const isPending = e.status === 'PENDING';
                                     const modeSuffix = e.payment_mode ? ` (${e.payment_mode})` : '';
 
                                     let desc = ENTRY_LABELS[e.entry_type] ?? e.entry_type;
+                                    let statusIcon: React.ReactNode = null;
                                     if (e.entry_type === 'BILL_POSTED') {
-                                        desc = `Bill – ${e.reference_month ? formatMonthYear(e.reference_month) : ''}`;
+                                        desc = `Bill · ${e.reference_month ? formatMonthYear(e.reference_month) : ''}`;
                                     } else if (e.entry_type === 'PAYMENT') {
-                                        const suffix = isRejected ? '❌ Rejected' : isPending ? '⏳ Pending' : '✅';
-                                        desc = `Payment${modeSuffix} ${suffix}`;
+                                        desc = `Payment${modeSuffix}`;
+                                        if (isPending) statusIcon = <Clock size={12} strokeWidth={2} style={{ color: 'var(--warning)' }} />;
+                                        else if (isRejected) statusIcon = <XCircle size={12} strokeWidth={2} style={{ color: 'var(--danger)' }} />;
+                                        else statusIcon = <CheckCircle2 size={12} strokeWidth={2} style={{ color: 'var(--success)' }} />;
                                     }
 
+                                    const isLast = idx === passbookEntries.length - 1;
+
                                     return (
-                                        <div key={e.id} style={{
-                                            display: 'grid',
-                                            gridTemplateColumns: '70px 1fr 80px 80px',
-                                            gap: '4px',
-                                            padding: '10px',
-                                            borderBottom: '1px solid var(--border)',
-                                            background: isRejected ? 'transparent' : isDebit ? 'rgba(239,68,68,0.05)' : 'rgba(34,197,94,0.05)',
-                                            opacity: isRejected ? 0.5 : 1,
-                                            textDecoration: isRejected ? 'line-through' : 'none',
-                                            fontSize: '0.85rem',
-                                            alignItems: 'center',
-                                        }}>
-                                            <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                                        <div
+                                            key={e.id}
+                                            style={{
+                                                display: 'grid',
+                                                gridTemplateColumns: '62px 1fr 78px 78px',
+                                                gap: 4,
+                                                padding: '10px 14px',
+                                                borderBottom: isLast ? 'none' : '1px solid var(--border-subtle)',
+                                                borderLeft: isRejected
+                                                    ? 'none'
+                                                    : `3px solid ${isPending ? 'var(--warning)' : isDebit ? 'rgba(239,68,68,0.35)' : 'rgba(16,185,129,0.35)'}`,
+                                                background: isPending ? 'var(--warning-bg)' : 'transparent',
+                                                opacity: isRejected ? 0.5 : 1,
+                                                textDecoration: isRejected ? 'line-through' : 'none',
+                                                fontSize: '0.85rem',
+                                                alignItems: 'center',
+                                            }}
+                                        >
+                                            <span
+                                                style={{
+                                                    fontFamily: 'var(--font-mono)',
+                                                    color: 'var(--text-muted)',
+                                                    fontSize: '0.72rem',
+                                                }}
+                                            >
                                                 {formatLedgerDate(e.transaction_date)}
                                             </span>
-                                            <span>{desc}</span>
-                                            <span style={{ textAlign: 'right', color: 'var(--danger)', fontWeight: isDebit ? 700 : 400 }}>
+                                            <div style={{ minWidth: 0 }}>
+                                                <div
+                                                    style={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: 6,
+                                                        color: 'var(--text-primary)',
+                                                    }}
+                                                >
+                                                    {statusIcon}
+                                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{desc}</span>
+                                                </div>
+                                                {isPending && (
+                                                    <span
+                                                        className="badge badge-warning"
+                                                        style={{ marginTop: 3 }}
+                                                    >
+                                                        Pending
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <span
+                                                style={{
+                                                    textAlign: 'right',
+                                                    fontFamily: 'var(--font-mono)',
+                                                    color: 'var(--danger)',
+                                                    fontWeight: isDebit ? 500 : 400,
+                                                }}
+                                            >
                                                 {isDebit ? formatAmount(e.amount) : ''}
                                             </span>
-                                            <span style={{ textAlign: 'right', color: 'var(--success)', fontWeight: !isDebit ? 700 : 400 }}>
+                                            <span
+                                                style={{
+                                                    textAlign: 'right',
+                                                    fontFamily: 'var(--font-mono)',
+                                                    color: 'var(--success)',
+                                                    fontWeight: !isDebit ? 500 : 400,
+                                                }}
+                                            >
                                                 {!isDebit ? formatAmount(e.amount) : ''}
                                             </span>
                                         </div>
@@ -422,50 +680,87 @@ export default function MilkCard() {
                 </>
             )}
 
-            {/* Settings / Password Modal */}
+            {/* Settings / PIN Modal */}
             {showSettings && (
                 <div className="modal-backdrop" onClick={() => setShowSettings(false)}>
-                    <div className="modal-content" onClick={e => e.stopPropagation()}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                            <h2 style={{ fontSize: '1.2rem', margin: 0 }}>⚙️ Security Settings</h2>
-                            <button className="icon-btn" onClick={() => setShowSettings(false)}>×</button>
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                        <div
+                            style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                marginBottom: 16,
+                            }}
+                        >
+                            <h2 style={{ fontSize: '1.05rem' }}>Security Settings</h2>
+                            <button
+                                className="icon-btn"
+                                onClick={() => setShowSettings(false)}
+                                aria-label="Close"
+                            >
+                                <X size={18} />
+                            </button>
                         </div>
-
-                        <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>
+                        <p
+                            style={{
+                                fontSize: '0.85rem',
+                                color: 'var(--text-secondary)',
+                                marginBottom: 14,
+                            }}
+                        >
                             Update your 6-digit PIN used for login.
                         </p>
-
                         <div className="form-group">
                             <label>Current PIN</label>
                             <input
                                 type="password"
                                 inputMode="numeric"
                                 value={pinData.oldPin}
-                                onChange={e => setPinData({ ...pinData, oldPin: e.target.value.replace(/\D/g, '').slice(0, 6) })}
+                                onChange={(e) =>
+                                    setPinData({
+                                        ...pinData,
+                                        oldPin: e.target.value.replace(/\D/g, '').slice(0, 6),
+                                    })
+                                }
                                 placeholder="Enter current PIN"
+                                style={{ fontFamily: 'var(--font-mono)', letterSpacing: '2px' }}
                             />
                         </div>
-
                         <div className="form-group">
                             <label>New PIN</label>
                             <input
                                 type="password"
                                 inputMode="numeric"
                                 value={pinData.newPin}
-                                onChange={e => setPinData({ ...pinData, newPin: e.target.value.replace(/\D/g, '').slice(0, 6) })}
+                                onChange={(e) =>
+                                    setPinData({
+                                        ...pinData,
+                                        newPin: e.target.value.replace(/\D/g, '').slice(0, 6),
+                                    })
+                                }
                                 placeholder="Enter new 6-digit PIN"
+                                style={{ fontFamily: 'var(--font-mono)', letterSpacing: '2px' }}
                             />
                         </div>
-
                         {pinStatus.error && <div className="error-msg">{pinStatus.error}</div>}
-                        {pinStatus.success && <div style={{ color: 'var(--success)', fontSize: '0.9rem', marginBottom: '16px', fontWeight: 600 }}>{pinStatus.success}</div>}
-
+                        {pinStatus.success && (
+                            <div
+                                style={{
+                                    color: 'var(--success)',
+                                    fontSize: '0.85rem',
+                                    marginBottom: 14,
+                                    fontWeight: 600,
+                                }}
+                            >
+                                {pinStatus.success}
+                            </div>
+                        )}
                         <button
                             className="btn btn-primary btn-full"
                             onClick={handleChangePassword}
                             disabled={pinStatus.loading || pinStatus.success !== ''}
                         >
-                            {pinStatus.loading ? 'Updating...' : 'Change PIN'}
+                            {pinStatus.loading ? 'Updating…' : 'Change PIN'}
                         </button>
                     </div>
                 </div>
