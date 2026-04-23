@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
-import { tenantApi } from '../api';
+import { tenantApi, ledgerApi } from '../api';
 
 export default function SuperAdminDashboard() {
     const { logout } = useAuth();
     const navigate = useNavigate();
     const [stats, setStats] = useState({ total: 0, active: 0 });
+    const [pendingApprovals, setPendingApprovals] = useState(0);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -15,12 +16,16 @@ export default function SuperAdminDashboard() {
 
     const loadStats = async () => {
         try {
-            const res = await tenantApi.list();
-            const shops = res.data.data || [];
+            const [tenantsRes, pendingRes] = await Promise.all([
+                tenantApi.list(),
+                ledgerApi.getPendingCount().catch(() => ({ data: { data: { count: 0 } } })),
+            ]);
+            const shops = tenantsRes.data.data || [];
             setStats({
                 total: shops.length,
                 active: shops.filter((s: any) => s.is_active).length
             });
+            setPendingApprovals(Number(pendingRes?.data?.data?.count ?? 0));
         } catch (error) {
             console.error('Failed to load platform stats:', error);
         } finally {
@@ -81,6 +86,43 @@ export default function SuperAdminDashboard() {
                             View, activate, or register shops
                         </div>
                     </div>
+                </button>
+
+                <button
+                    className="quick-action-btn"
+                    onClick={() => navigate('/admin/pending-payments')}
+                    style={{ position: 'relative' }}
+                >
+                    <div className="quick-action-icon">✅</div>
+                    <div>
+                        <div>Pending Approvals</div>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 400 }}>
+                            Approve customer payments
+                        </div>
+                    </div>
+                    {pendingApprovals > 0 && (
+                        <span
+                            style={{
+                                position: 'absolute',
+                                top: '12px',
+                                right: '14px',
+                                background: 'var(--danger)',
+                                color: '#fff',
+                                borderRadius: '999px',
+                                minWidth: '22px',
+                                height: '22px',
+                                padding: '0 7px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '0.72rem',
+                                fontWeight: 700,
+                                boxShadow: '0 0 0 2px var(--bg-card)',
+                            }}
+                        >
+                            {pendingApprovals > 99 ? '99+' : pendingApprovals}
+                        </span>
+                    )}
                 </button>
 
                 <button className="quick-action-btn" onClick={() => navigate('/portal/registration')}>

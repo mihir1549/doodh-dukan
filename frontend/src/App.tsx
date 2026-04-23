@@ -23,6 +23,15 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
   return <div className="app-container">{children}</div>;
 }
 
+function AdminRoute({ children }: { children: ReactNode }) {
+  const { user, loading } = useAuth();
+  if (loading) return <div className="page"><div className="loading"><div className="spinner" /></div></div>;
+  if (!user) return <Navigate to="/login" replace />;
+  const role = user?.role?.toUpperCase();
+  if (role !== 'OWNER' && role !== 'SUPER_ADMIN') return <Navigate to="/" replace />;
+  return <div className="app-container">{children}</div>;
+}
+
 function PublicRoute({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
   if (loading) return null;
@@ -46,7 +55,7 @@ function AppRoutes() {
       <Route path="/customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />
       <Route path="/customers/:id" element={<ProtectedRoute><CustomerDetail /></ProtectedRoute>} />
       <Route path="/customers/:id/ledger" element={<ProtectedRoute><CustomerLedger /></ProtectedRoute>} />
-      <Route path="/admin/pending-payments" element={<ProtectedRoute><PendingPayments /></ProtectedRoute>} />
+      <Route path="/admin/pending-payments" element={<AdminRoute><PendingPayments /></AdminRoute>} />
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
       <Route path="/card" element={<ProtectedRoute><MilkCard /></ProtectedRoute>} />
       <Route path="/shops" element={<ProtectedRoute><Shops /></ProtectedRoute>} />
