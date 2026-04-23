@@ -1,6 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ReactSortable } from 'react-sortablejs';
+import {
+    ChevronLeft, Search, RotateCcw, GripVertical,
+    CheckCircle2, ArrowRight, Delete, Droplets, Package,
+    AlertTriangle, Save, X, Users, Calendar, Pencil,
+} from 'lucide-react';
 import { customerApi, productApi, entryApi } from '../api';
 import { useAuth } from '../AuthContext';
 
@@ -16,10 +21,32 @@ const getTodayDateValue = () => {
 
 const getErrorMessage = (err: any) => {
     const message = err?.response?.data?.message;
-    if (Array.isArray(message)) {
-        return message.join(', ');
-    }
+    if (Array.isArray(message)) return message.join(', ');
     return message || 'Failed to save entry';
+};
+
+// Generate consistent avatar color from name
+const AVATAR_COLORS = [
+    { bg: 'rgba(59, 130, 246, 0.2)',  fg: '#60a5fa' },
+    { bg: 'rgba(16, 185, 129, 0.2)',  fg: '#34d399' },
+    { bg: 'rgba(245, 158, 11, 0.2)',  fg: '#fbbf24' },
+    { bg: 'rgba(236, 72, 153, 0.2)',  fg: '#f472b6' },
+    { bg: 'rgba(139, 92, 246, 0.2)',  fg: '#a78bfa' },
+    { bg: 'rgba(6, 182, 212, 0.2)',   fg: '#22d3ee' },
+    { bg: 'rgba(239, 68, 68, 0.2)',   fg: '#f87171' },
+    { bg: 'rgba(168, 85, 247, 0.2)',  fg: '#c084fc' },
+];
+function avatarColor(name?: string) {
+    if (!name) return AVATAR_COLORS[0];
+    let h = 0;
+    for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+    return AVATAR_COLORS[h % AVATAR_COLORS.length];
+}
+
+const formatDate = (d: string) => {
+    if (!d) return '';
+    const dt = new Date(d + 'T00:00:00');
+    return dt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 };
 
 export default function AddEntry() {
@@ -32,7 +59,7 @@ export default function AddEntry() {
     const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
     const [selectedProduct, setSelectedProduct] = useState<any>(null);
     const [quantity, setQuantity] = useState(1);
-    const [qtyStr, setQtyStr] = useState('');  // for loose milk numpad
+    const [qtyStr, setQtyStr] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
@@ -52,6 +79,9 @@ export default function AddEntry() {
     const sourceLabel = user?.role === 'DELIVERY' ? 'DELIVERY' : 'SHOP';
     const isBackdated = entryDate < today;
 
+    const saveTimerRef = useRef<any>(null);
+    const hasLoadedRef = useRef(false);
+
     useEffect(() => {
         loadProducts();
         loadAllCustomers();
@@ -60,24 +90,17 @@ export default function AddEntry() {
     const loadAllCustomers = async () => {
         setLoading(true);
         try {
-            const res = await customerApi.list('', 1, 10000); // Load all customers initially
+            const res = await customerApi.list('', 1, 10000);
             const newData = res.data?.data?.data || [];
-            console.log(`[AddEntry] Loaded ${newData.length} customers from API`);
-
-            // Custom arrangement: load sequence from API response
             const responseData = res.data?.data;
-            const savedSeq: string[] = responseData?.customer_sequence || []; // Now using UUIDs
-            console.log(`[AddEntry] Sequence from API:`, savedSeq);
+            const savedSeq: string[] = responseData?.customer_sequence || [];
 
             newData.sort((a: any, b: any) => {
                 const indexA = savedSeq.indexOf(a.id);
                 const indexB = savedSeq.indexOf(b.id);
-
                 if (indexA !== -1 && indexB !== -1) return indexA - indexB;
                 if (indexA !== -1) return -1;
                 if (indexB !== -1) return 1;
-
-                // Fallback to numeric order if not in custom sequence
                 return Number(a.customer_number || 0) - Number(b.customer_number || 0);
             });
 
@@ -90,81 +113,49 @@ export default function AddEntry() {
         }
     };
 
-    // Auto-save debounced logic
-    const saveTimerRef = useRef<any>(null);
-    const hasLoadedRef = useRef(false);
     const [orderDirty, setOrderDirty] = useState(false);
 
     const triggerSave = (newList: any[]) => {
-        const fullSequence = newList.map(c => c.id);
-        console.log(`[AddEntry] SAVING sequence: ${fullSequence.length} IDs to backend.`);
-
+        const fullSequence = newList.map((c) => c.id);
         customerApi.saveSequence(fullSequence)
-            .then((res) => {
-                console.log("[AddEntry] SAVE successful. Response:", res.data);
+            .then(() => {
                 setShowSaveToast(true);
                 setOrderDirty(false);
                 setTimeout(() => setShowSaveToast(false), 2000);
             })
-            .catch(err => {
-                console.error("[AddEntry] SAVE failed:", err);
-                setError("Failed to save order to server");
+            .catch(() => {
+                setError('Failed to save order to server');
             });
     };
 
     const handleReorder = (newState: any[]) => {
-        // GUARDS to prevent accidental data loss:
-        if (search) return; // don't save sequence if user is actively searching
-        if (!hasLoadedRef.current) return; // don't save if we haven't even finished the initial load
-        if (allCustomers.length > 0 && newState.length === 0) {
-            console.warn("[AddEntry] Guarded against saving empty sequence while customers exist.");
-            return;
-        }
+        if (search) return;
+        if (!hasLoadedRef.current) return;
+        if (allCustomers.length > 0 && newState.length === 0) return;
 
-        // 1. Synchronously update the state for instant UI feedback
-        const sliceIds = new Set(newState.map(c => c.id));
-        const rest = allCustomers.filter(c => !sliceIds.has(c.id));
+        const sliceIds = new Set(newState.map((c) => c.id));
+        const rest = allCustomers.filter((c) => !sliceIds.has(c.id));
         const fullNewList = [...newState, ...rest];
 
         setAllCustomers(fullNewList);
+        setOrderDirty(true);
 
-        // 2. Debounced backend update of the FULL sequence
         if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
         saveTimerRef.current = setTimeout(() => triggerSave(fullNewList), 1500);
     };
 
     const resetOrder = async () => {
-        if (window.confirm("Restore default customer ordering?")) {
+        if (window.confirm('Restore default customer ordering?')) {
             try {
                 await customerApi.saveSequence([]);
-                // Small delay to let DB update finish before reload
                 setTimeout(() => loadAllCustomers(), 300);
-            } catch (err) {
-                setError("Failed to reset order");
+            } catch {
+                setError('Failed to reset order');
             }
         }
     };
 
-    const handlePin = async (customer: any) => {
-        // Move this customer to the very top of the sequence
-        const currentOrder = allCustomers.slice(0, displayLimit);
-        const newSeq = [customer, ...currentOrder.filter(c => c.id !== customer.id)];
-
-        const rest = allCustomers.filter(c => !newSeq.find(s => s.id === c.id));
-        const fullNewList = [...newSeq, ...rest];
-
-        setAllCustomers(fullNewList);
-        setOrderDirty(true);
-        triggerSave(fullNewList);
-
-        // Scroll top
-        setTimeout(() => {
-            const container = document.getElementById(SCROLL_CONTAINER_ID);
-            if (container) container.scrollTo({ top: 0, behavior: 'smooth' });
-        }, 100);
-    };
-
-    const rawFiltered = allCustomers.filter(c => {
+    const rawFiltered = allCustomers.filter((c) => {
         if (!search) return true;
         const lowerSearch = search.toLowerCase();
         const nameMatch = c.name?.toLowerCase().includes(lowerSearch);
@@ -178,11 +169,9 @@ export default function AddEntry() {
         try {
             const res = await productApi.list();
             setProducts(res.data?.data || []);
-        } catch { setProducts([]); }
-    };
-
-    const handleSearch = (val: string) => {
-        setSearch(val);
+        } catch {
+            setProducts([]);
+        }
     };
 
     const handleDateChange = (value: string) => {
@@ -230,7 +219,6 @@ export default function AddEntry() {
 
     const handleUpdateDuplicate = async () => {
         if (!duplicateState) return;
-
         setLoading(true);
         setError('');
         try {
@@ -251,11 +239,26 @@ export default function AddEntry() {
         ? (quantity * Number(selectedProduct.current_price || 0)).toFixed(2)
         : '0.00';
 
+    // ── Success screen ──────────────────────────────────────────────────
     if (successMessage) {
         return (
-            <div className="page" style={{ textAlign: 'center', paddingTop: '80px' }}>
-                <div style={{ fontSize: '4rem', marginBottom: '16px' }}>✅</div>
-                <h2 style={{ color: 'var(--success)', marginBottom: '8px' }}>Entry Saved!</h2>
+            <div className="page" style={{ textAlign: 'center', paddingTop: 80 }}>
+                <div
+                    style={{
+                        width: 72,
+                        height: 72,
+                        borderRadius: '50%',
+                        background: 'var(--success-bg)',
+                        color: 'var(--success)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        margin: '0 auto 20px',
+                    }}
+                >
+                    <CheckCircle2 size={40} strokeWidth={1.75} />
+                </div>
+                <h2 style={{ color: 'var(--success)', marginBottom: 8 }}>Entry Saved</h2>
                 <p style={{ color: 'var(--text-secondary)' }}>{successMessage}</p>
             </div>
         );
@@ -264,82 +267,108 @@ export default function AddEntry() {
     return (
         <div className="page">
             <div className="page-header">
-                <button className="back-btn" onClick={() => step > 1 ? setStep(step - 1) : navigate('/')}>
-                    ← {step > 1 ? 'Back' : 'Home'}
+                <button
+                    className="back-btn"
+                    onClick={() => (step > 1 ? setStep(step - 1) : navigate('/'))}
+                >
+                    <ChevronLeft size={16} strokeWidth={2} />
+                    {step > 1 ? 'Back' : 'Home'}
                 </button>
                 <h1>Add Entry</h1>
+                <div style={{ width: 78 }} />
             </div>
 
+            {/* Sequence-saved toast */}
             {showSaveToast && (
-                <div style={{
-                    position: 'fixed',
-                    top: '20px',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    background: 'var(--success)',
-                    color: 'white',
-                    padding: '10px 20px',
-                    borderRadius: '20px',
-                    fontWeight: 'bold',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-                    zIndex: 9999,
-                    pointerEvents: 'none',
-                }}>
-                    ✨ Sequence Saved
+                <div
+                    className="toast toast-success"
+                    style={{ top: 20, bottom: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}
+                >
+                    <CheckCircle2 size={16} />
+                    Sequence saved
                 </div>
             )}
 
-            {/* Step indicators */}
+            {/* Step pills */}
             <div className="steps">
                 {[1, 2, 3, 4].map((s) => (
-                    <div key={s} className={`step-dot ${s === step ? 'active' : s < step ? 'active' : ''}`} />
+                    <div
+                        key={s}
+                        className={`step-dot ${s <= step ? 'active' : ''}`}
+                    />
                 ))}
             </div>
 
-            {/* Step 1: Select Customer */}
+            {/* ── Step 1: Select Customer ─────────────────────────── */}
             {step === 1 && (
                 <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                        <h3 style={{ color: 'var(--text-secondary)' }}>Select Customer</h3>
-                        <div style={{ display: 'flex', gap: '12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                        <h3 style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', fontWeight: 600, letterSpacing: '0.02em' }}>
+                            Select Customer
+                        </h3>
+                        <div style={{ display: 'flex', gap: 8 }}>
                             {orderDirty && (
                                 <button
                                     onClick={() => triggerSave(allCustomers)}
                                     style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: 5,
                                         background: 'var(--success)',
                                         color: 'white',
                                         border: 'none',
-                                        padding: '4px 12px',
-                                        borderRadius: '12px',
-                                        fontSize: '0.85rem',
+                                        padding: '5px 10px',
+                                        borderRadius: 999,
+                                        fontSize: '0.78rem',
                                         cursor: 'pointer',
-                                        fontWeight: 'bold',
-                                        boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+                                        fontWeight: 600,
                                     }}
                                 >
-                                    💾 Save Order
+                                    <Save size={12} />
+                                    Save Order
                                 </button>
                             )}
                             <button
                                 onClick={resetOrder}
-                                style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: '0.85rem', cursor: 'pointer' }}
+                                style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 5,
+                                    background: 'none',
+                                    border: 'none',
+                                    color: 'var(--brand-primary)',
+                                    fontSize: '0.78rem',
+                                    cursor: 'pointer',
+                                    fontWeight: 600,
+                                }}
                             >
-                                🔄 Reset Order
+                                <RotateCcw size={12} />
+                                Reset
                             </button>
                         </div>
                     </div>
+
                     <div className="search-box">
-                        <span className="search-icon">🔍</span>
+                        <span className="search-icon">
+                            <Search size={16} strokeWidth={2} />
+                        </span>
                         <input
-                            placeholder="Search by name or ID..."
+                            placeholder="Search by name or ID…"
                             value={search}
-                            onChange={(e) => handleSearch(e.target.value)}
-                            style={{ paddingLeft: '44px' }}
+                            onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
+
                     <div
                         id={SCROLL_CONTAINER_ID}
-                        style={{ maxHeight: '60vh', overflowY: 'auto', paddingRight: '4px' }}
+                        style={{
+                            maxHeight: '62vh',
+                            overflowY: 'auto',
+                            paddingRight: 4,
+                            background: 'var(--bg-surface)',
+                            border: '1px solid var(--border-subtle)',
+                            borderRadius: 'var(--radius-lg)',
+                        }}
                     >
                         <ReactSortable
                             list={filteredCustomers}
@@ -347,252 +376,417 @@ export default function AddEntry() {
                             animation={250}
                             handle=".drag-handle"
                             disabled={search.length > 0}
-                            scroll={true}
-                            forceFallback={true}
+                            scroll
+                            forceFallback
                             ghostClass="sortable-ghost"
                             chosenClass="sortable-chosen"
                             dragClass="sortable-drag"
                             fallbackClass="sortable-drag"
                             scrollSensitivity={80}
                             scrollSpeed={10}
-                            bubbleScroll={true}
+                            bubbleScroll
                         >
-                            {filteredCustomers.map((c) => (
-                                <div
-                                    key={c.id}
-                                    className={`customer-item ${selectedCustomer?.id === c.id ? 'selected' : ''}`}
-                                    onClick={() => { setSelectedCustomer(c); setStep(2); }}
-                                    style={{ cursor: search ? 'pointer' : 'grab' }}
-                                >
-                                    <div className="customer-avatar">{c.customer_number || c.name?.charAt(0)?.toUpperCase()}</div>
-                                    <div>
-                                        <div className="customer-name">#{c.customer_number} · {c.name}</div>
-                                        {c.phone && <div className="customer-phone">{c.phone}</div>}
-                                    </div>
-
-                                    <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); handlePin(c); }}
-                                            title="Move to Top"
-                                            style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', opacity: 0.6 }}
+                            {filteredCustomers.map((c) => {
+                                const color = avatarColor(c.name);
+                                const letter = c.name?.charAt(0)?.toUpperCase() || '?';
+                                const address = (c.address || '').trim();
+                                const shortAddress = address.length > 30 ? address.slice(0, 30) + '…' : address;
+                                return (
+                                    <div
+                                        key={c.id}
+                                        className={`customer-item ${selectedCustomer?.id === c.id ? 'selected' : ''}`}
+                                        onClick={() => { setSelectedCustomer(c); setStep(2); }}
+                                        style={{
+                                            cursor: search ? 'pointer' : 'grab',
+                                            borderRadius: 0,
+                                            borderBottom: '1px solid var(--border-subtle)',
+                                        }}
+                                    >
+                                        <div
+                                            className="customer-avatar"
+                                            style={{ background: color.bg, color: color.fg }}
                                         >
-                                            📌
-                                        </button>
+                                            {letter}
+                                        </div>
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div className="customer-name" style={{ marginBottom: 2 }}>
+                                                {c.name}
+                                            </div>
+                                            <div
+                                                style={{
+                                                    fontFamily: 'var(--font-mono)',
+                                                    fontSize: '0.78rem',
+                                                    color: 'var(--text-secondary)',
+                                                }}
+                                            >
+                                                #{c.customer_number}
+                                                {c.phone ? ` · ${c.phone}` : ''}
+                                            </div>
+                                            {shortAddress && (
+                                                <div
+                                                    style={{
+                                                        fontSize: '0.76rem',
+                                                        color: 'var(--text-muted)',
+                                                        marginTop: 2,
+                                                        whiteSpace: 'nowrap',
+                                                        overflow: 'hidden',
+                                                        textOverflow: 'ellipsis',
+                                                    }}
+                                                >
+                                                    {shortAddress}
+                                                </div>
+                                            )}
+                                        </div>
+
                                         {!search && (
-                                            <div className="drag-handle" style={{ color: '#ccc', padding: '10px' }}>
-                                                ☰
+                                            <div
+                                                className="drag-handle"
+                                                style={{
+                                                    color: 'var(--text-muted)',
+                                                    padding: 10,
+                                                    cursor: 'grab',
+                                                    display: 'flex',
+                                                }}
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                <GripVertical size={18} strokeWidth={1.75} />
                                             </div>
                                         )}
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </ReactSortable>
 
                         {rawFiltered.length > displayLimit && (
                             <button
-                                onClick={() => setDisplayLimit(prev => prev + 100)}
-                                className="btn btn-secondary btn-full"
-                                style={{ marginTop: '12px', background: 'var(--bg-card)', border: '1px dashed var(--border)' }}
+                                onClick={() => setDisplayLimit((prev) => prev + 100)}
+                                className="btn btn-outline btn-full"
+                                style={{
+                                    margin: 10,
+                                    width: 'calc(100% - 20px)',
+                                    borderStyle: 'dashed',
+                                }}
                             >
-                                Load More (+100) ... Total {rawFiltered.length}
+                                Load More (+100) · {rawFiltered.length} total
                             </button>
                         )}
 
                         {loading && allCustomers.length === 0 && (
-                            <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>Loading...</div>
+                            <div style={{ textAlign: 'center', padding: 20, color: 'var(--text-muted)' }}>
+                                Loading…
+                            </div>
                         )}
                         {!loading && filteredCustomers.length === 0 && (
                             <div className="empty-state">
-                                <div className="empty-icon">👤</div>
-                                <p>No customers found</p>
+                                <Users size={40} style={{ opacity: 0.4 }} />
+                                <p style={{ marginTop: 8 }}>No customers found</p>
                             </div>
                         )}
                     </div>
                 </div>
             )}
 
-            {/* Step 2: Select Product */}
+            {/* ── Step 2: Select Product ──────────────────────────── */}
             {step === 2 && (
                 <div>
-                    <h3 style={{ marginBottom: '16px', color: 'var(--text-secondary)' }}>
+                    <h3
+                        style={{
+                            marginBottom: 14,
+                            color: 'var(--text-secondary)',
+                            fontSize: '0.88rem',
+                            fontWeight: 600,
+                            letterSpacing: '0.02em',
+                        }}
+                    >
                         Select Product for {selectedCustomer?.name}
                     </h3>
 
                     <div className="product-grid">
-                        {products.map((p) => (
-                            <div
-                                key={p.id}
-                                className={`product-card ${selectedProduct?.id === p.id ? 'selected' : ''}`}
-                                onClick={() => { setSelectedProduct(p); setStep(3); }}
-                            >
-                                <div className="product-name">{p.name}</div>
-                                <div className="product-price">
-                                    ₹{Number(p.current_price || 0).toFixed(2)}
+                        {products.map((p) => {
+                            const isLoose =
+                                p.category === 'LOOSE_MILK' ||
+                                (p.name || '').toLowerCase().includes('loose') ||
+                                (p.unit || '').toLowerCase().includes('litre');
+                            const isSelected = selectedProduct?.id === p.id;
+                            return (
+                                <div
+                                    key={p.id}
+                                    className={`product-card ${isSelected ? 'selected' : ''}`}
+                                    onClick={() => { setSelectedProduct(p); setStep(3); setQtyStr(''); }}
+                                >
+                                    <div
+                                        style={{
+                                            display: 'flex',
+                                            justifyContent: 'center',
+                                            marginBottom: 8,
+                                            color: 'var(--brand-primary)',
+                                        }}
+                                    >
+                                        {isLoose ? (
+                                            <Droplets size={28} strokeWidth={1.75} />
+                                        ) : (
+                                            <Package size={28} strokeWidth={1.75} />
+                                        )}
+                                    </div>
+                                    <div className="product-name">{p.name}</div>
+                                    <div className="product-price">
+                                        ₹{Number(p.current_price || 0).toFixed(2)}
+                                    </div>
+                                    <div className="product-unit">per {p.unit}</div>
                                 </div>
-                                <div className="product-unit">per {p.unit}</div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
+
                     {products.length === 0 && (
                         <div className="empty-state">
-                            <div className="empty-icon">📦</div>
-                            <p>No products available</p>
+                            <Package size={40} style={{ opacity: 0.4 }} />
+                            <p style={{ marginTop: 8 }}>No products available</p>
                         </div>
                     )}
                 </div>
             )}
 
-            {/* Step 3: Enter Quantity */}
-            {step === 3 && (() => {
-                const isPacket = selectedProduct?.unit?.toLowerCase() === 'packet';
-                const price = Number(selectedProduct?.current_price || 0);
+            {/* ── Step 3: Quantity ────────────────────────────────── */}
+            {step === 3 &&
+                (() => {
+                    const isPacket = selectedProduct?.unit?.toLowerCase() === 'packet';
+                    const price = Number(selectedProduct?.current_price || 0);
 
-                if (isPacket) {
-                    // PACKET: Simple tap grid (1-5)
-                    return (
-                        <div style={{ textAlign: 'center' }}>
-                            <h3 style={{ marginBottom: '8px', color: 'var(--text-secondary)' }}>
-                                How many {selectedProduct?.name}?
-                            </h3>
-                            <p style={{ color: 'var(--text-muted)', marginBottom: '24px' }}>
-                                ₹{price.toFixed(2)} per packet
-                            </p>
+                    if (isPacket) {
+                        return (
+                            <div style={{ textAlign: 'center' }}>
+                                <h3
+                                    style={{
+                                        marginBottom: 4,
+                                        color: 'var(--text-secondary)',
+                                        fontSize: '0.88rem',
+                                        fontWeight: 600,
+                                    }}
+                                >
+                                    How many {selectedProduct?.name}?
+                                </h3>
+                                <p
+                                    style={{
+                                        color: 'var(--text-muted)',
+                                        marginBottom: 20,
+                                        fontFamily: 'var(--font-mono)',
+                                        fontSize: '0.85rem',
+                                    }}
+                                >
+                                    ₹{price.toFixed(2)} / packet
+                                </p>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', maxWidth: '280px', margin: '0 auto' }}>
-                                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
-                                    <button
-                                        key={n}
-                                        onClick={() => setQuantity(n)}
+                                <div
+                                    style={{
+                                        display: 'grid',
+                                        gridTemplateColumns: 'repeat(3, 1fr)',
+                                        gap: 10,
+                                        maxWidth: 280,
+                                        margin: '0 auto',
+                                    }}
+                                >
+                                    {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => {
+                                        const active = quantity === n;
+                                        return (
+                                            <button
+                                                key={n}
+                                                onClick={() => setQuantity(n)}
+                                                style={{
+                                                    padding: 16,
+                                                    fontSize: '1.3rem',
+                                                    fontWeight: 600,
+                                                    fontFamily: 'var(--font-display)',
+                                                    borderRadius: 'var(--radius-md)',
+                                                    border: `1px solid ${active ? 'var(--brand-primary)' : 'var(--border-subtle)'}`,
+                                                    background: active ? 'var(--brand-primary)' : 'var(--bg-elevated)',
+                                                    color: active ? '#fff' : 'var(--text-primary)',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.15s',
+                                                }}
+                                            >
+                                                {n}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+
+                                <div style={{ marginTop: 24 }}>
+                                    <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600, marginBottom: 4 }}>
+                                        Total
+                                    </div>
+                                    <div className="amount-large amount-positive">
+                                        ₹{(quantity * price).toFixed(2)}
+                                    </div>
+                                    <div
                                         style={{
-                                            padding: '20px', fontSize: '1.5rem', fontWeight: 800,
-                                            borderRadius: 'var(--radius-md)', border: '2px solid',
-                                            borderColor: quantity === n ? 'var(--accent)' : 'var(--border)',
-                                            background: quantity === n ? 'var(--accent)' : 'var(--bg-card)',
-                                            color: quantity === n ? '#fff' : 'var(--text-primary)',
-                                            cursor: 'pointer', transition: 'all 0.15s',
+                                            fontSize: '0.8rem',
+                                            color: 'var(--text-muted)',
+                                            fontFamily: 'var(--font-mono)',
+                                            marginTop: 4,
                                         }}
                                     >
-                                        {n}
-                                    </button>
-                                ))}
+                                        {quantity} packet × ₹{price.toFixed(2)}
+                                    </div>
+                                </div>
+
+                                <button
+                                    className="btn btn-primary btn-full btn-lg"
+                                    style={{ marginTop: 24 }}
+                                    onClick={() => setStep(4)}
+                                >
+                                    Continue <ArrowRight size={18} strokeWidth={2} />
+                                </button>
+                            </div>
+                        );
+                    }
+
+                    // Loose / litre path
+                    const displayQty = qtyStr || '0';
+                    const numQty = parseFloat(qtyStr) || 0;
+
+                    const handleDial = (key: string) => {
+                        setQtyStr((prev) => {
+                            if (key === 'backspace') return prev.slice(0, -1);
+                            if (key === '.' && prev.includes('.')) return prev;
+                            if (key === '.' && prev === '') return '0.';
+                            if (prev.length >= 5) return prev;
+                            return prev + key;
+                        });
+                    };
+
+                    const handleContinue = () => {
+                        const val = parseFloat(qtyStr);
+                        if (!val || val <= 0) return;
+                        setQuantity(val);
+                        setStep(4);
+                    };
+
+                    return (
+                        <div style={{ textAlign: 'center' }}>
+                            <h3
+                                style={{
+                                    marginBottom: 4,
+                                    color: 'var(--text-secondary)',
+                                    fontSize: '0.88rem',
+                                    fontWeight: 600,
+                                }}
+                            >
+                                How much {selectedProduct?.name}?
+                            </h3>
+                            <p
+                                style={{
+                                    color: 'var(--text-muted)',
+                                    marginBottom: 16,
+                                    fontFamily: 'var(--font-mono)',
+                                    fontSize: '0.85rem',
+                                }}
+                            >
+                                ₹{price.toFixed(2)} / {selectedProduct?.unit}
+                            </p>
+
+                            {/* Display */}
+                            <div
+                                style={{
+                                    padding: '20px 16px',
+                                    margin: '0 auto 10px',
+                                    background: 'var(--bg-surface)',
+                                    borderRadius: 'var(--radius-lg)',
+                                    border: '1px solid var(--border-subtle)',
+                                    maxWidth: 300,
+                                }}
+                            >
+                                <div
+                                    style={{
+                                        fontFamily: 'var(--font-mono)',
+                                        fontSize: '2.4rem',
+                                        fontWeight: 500,
+                                        color: 'var(--text-primary)',
+                                        letterSpacing: '-0.02em',
+                                        lineHeight: 1,
+                                    }}
+                                >
+                                    {displayQty}
+                                    <span style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', marginLeft: 6, fontWeight: 400 }}>
+                                        {selectedProduct?.unit}
+                                    </span>
+                                </div>
+                                <div
+                                    className="amount-medium amount-positive"
+                                    style={{ marginTop: 6 }}
+                                >
+                                    ₹{(numQty * price).toFixed(2)}
+                                </div>
                             </div>
 
-                            <div style={{ marginTop: '28px' }}>
-                                <div style={{ fontSize: '1rem', color: 'var(--text-secondary)' }}>Total</div>
-                                <div style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--success)' }}>
-                                    ₹{(quantity * price).toFixed(2)}
-                                </div>
-                                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                                    {quantity} packet × ₹{price.toFixed(2)}
-                                </div>
+                            {/* Numpad */}
+                            <div className="numpad" style={{ marginTop: 16 }}>
+                                {['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0'].map((key) => (
+                                    <button
+                                        key={key}
+                                        className="numpad-btn"
+                                        onClick={() => handleDial(key)}
+                                    >
+                                        {key}
+                                    </button>
+                                ))}
+                                <button
+                                    className="numpad-btn"
+                                    onClick={() => handleDial('backspace')}
+                                    aria-label="Backspace"
+                                >
+                                    <Delete size={22} strokeWidth={1.75} />
+                                </button>
                             </div>
 
                             <button
                                 className="btn btn-primary btn-full btn-lg"
-                                style={{ marginTop: '24px' }}
-                                onClick={() => setStep(4)}
+                                style={{ marginTop: 20, maxWidth: 340, margin: '20px auto 0' }}
+                                onClick={handleContinue}
+                                disabled={numQty <= 0}
                             >
-                                Continue →
+                                Continue <ArrowRight size={18} strokeWidth={2} />
                             </button>
                         </div>
                     );
-                }
+                })()}
 
-                // LOOSE MILK / LITRE: Numpad dial
-                const displayQty = qtyStr || '0';
-                const numQty = parseFloat(qtyStr) || 0;
-
-                const handleDial = (key: string) => {
-                    setQtyStr((prev) => {
-                        if (key === 'backspace') return prev.slice(0, -1);
-                        if (key === '.' && prev.includes('.')) return prev; // only one dot
-                        if (key === '.' && prev === '') return '0.'; // start with 0.
-                        if (prev.length >= 5) return prev; // max 5 chars
-                        return prev + key;
-                    });
-                };
-
-                // Sync quantity state when moving to step 4
-                const handleContinue = () => {
-                    const val = parseFloat(qtyStr);
-                    if (!val || val <= 0) return;
-                    setQuantity(val);
-                    setStep(4);
-                };
-
-                const dialBtnStyle = {
-                    padding: '16px', fontSize: '1.4rem', fontWeight: 700 as const,
-                    borderRadius: 'var(--radius-md)', border: '2px solid var(--border)',
-                    background: 'var(--bg-card)', color: 'var(--text-primary)',
-                    cursor: 'pointer', transition: 'all 0.1s',
-                };
-
-                return (
-                    <div style={{ textAlign: 'center' }}>
-                        <h3 style={{ marginBottom: '8px', color: 'var(--text-secondary)' }}>
-                            How much {selectedProduct?.name}?
-                        </h3>
-                        <p style={{ color: 'var(--text-muted)', marginBottom: '16px' }}>
-                            ₹{price.toFixed(2)} per {selectedProduct?.unit}
-                        </p>
-
-                        {/* Display */}
-                        <div style={{
-                            fontSize: '3rem', fontWeight: 800, color: 'var(--accent)',
-                            padding: '12px 20px', margin: '0 auto 8px', minHeight: '60px',
-                            background: 'var(--bg-card)', borderRadius: 'var(--radius-md)',
-                            border: '2px solid var(--border)',
-                        }}>
-                            {displayQty} <span style={{ fontSize: '1rem', fontWeight: 400, color: 'var(--text-secondary)' }}>{selectedProduct?.unit}</span>
-                        </div>
-
-                        {/* Total */}
-                        <div style={{ marginBottom: '16px' }}>
-                            <span style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--success)' }}>
-                                ₹{(numQty * price).toFixed(2)}
-                            </span>
-                        </div>
-
-                        {/* Numpad */}
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', maxWidth: '300px', margin: '0 auto' }}>
-                            {['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', 'backspace'].map((key) => (
-                                <button
-                                    key={key}
-                                    onClick={() => handleDial(key)}
-                                    style={{
-                                        ...dialBtnStyle,
-                                        ...(key === 'backspace' ? { fontSize: '1.2rem' } : {}),
-                                        ...(key === '.' ? { fontSize: '2rem', fontWeight: 900 } : {}),
-                                    }}
-                                >
-                                    {key === 'backspace' ? '⌫' : key}
-                                </button>
-                            ))}
-                        </div>
-
-                        <button
-                            className="btn btn-primary btn-full btn-lg"
-                            style={{ marginTop: '20px' }}
-                            onClick={handleContinue}
-                            disabled={numQty <= 0}
-                        >
-                            Continue →
-                        </button>
-                    </div>
-                );
-            })()}
-
-            {/* Step 4: Confirm */}
+            {/* ── Step 4: Confirm ─────────────────────────────────── */}
             {step === 4 && (
                 <div>
-                    <h3 style={{ marginBottom: '16px', color: 'var(--text-secondary)', textAlign: 'center' }}>
-                        Confirm Entry
+                    <h3
+                        style={{
+                            marginBottom: 14,
+                            color: 'var(--text-secondary)',
+                            fontSize: '0.88rem',
+                            fontWeight: 600,
+                            letterSpacing: '0.02em',
+                            textAlign: 'center',
+                        }}
+                    >
+                        Review & Confirm
                     </h3>
 
                     <div className="confirm-card">
+                        <div
+                            style={{
+                                fontSize: '0.72rem',
+                                fontWeight: 700,
+                                color: 'var(--text-muted)',
+                                letterSpacing: '0.1em',
+                                textTransform: 'uppercase',
+                                marginBottom: 12,
+                                textAlign: 'center',
+                            }}
+                        >
+                            Entry Receipt
+                        </div>
+
                         <div className="confirm-row">
                             <span className="confirm-label">Customer</span>
-                            <span className="confirm-value">#{selectedCustomer?.customer_number} · {selectedCustomer?.name}</span>
+                            <span className="confirm-value">
+                                #{selectedCustomer?.customer_number} · {selectedCustomer?.name}
+                            </span>
                         </div>
                         <div className="confirm-row">
                             <span className="confirm-label">Product</span>
@@ -600,56 +794,93 @@ export default function AddEntry() {
                         </div>
                         <div className="confirm-row">
                             <span className="confirm-label">Quantity</span>
-                            <span className="confirm-value">{quantity} {selectedProduct?.unit}</span>
+                            <span
+                                className="confirm-value"
+                                style={{ fontFamily: 'var(--font-mono)' }}
+                            >
+                                {quantity} {selectedProduct?.unit}
+                            </span>
                         </div>
                         <div className="confirm-row">
-                            <span className="confirm-label">Price</span>
-                            <span className="confirm-value">₹{Number(selectedProduct?.current_price || 0).toFixed(2)}/{selectedProduct?.unit}</span>
+                            <span className="confirm-label">Rate</span>
+                            <span
+                                className="confirm-value"
+                                style={{ fontFamily: 'var(--font-mono)' }}
+                            >
+                                ₹{Number(selectedProduct?.current_price || 0).toFixed(2)} / {selectedProduct?.unit}
+                            </span>
                         </div>
                         <div className="confirm-row">
-                            <span className="confirm-label">Date</span>
+                            <span className="confirm-label">
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                    <Calendar size={13} />
+                                    Date
+                                </span>
+                            </span>
                             <span className="confirm-value">
-                                <input
-                                    type="date"
-                                    value={entryDate}
-                                    max={today}
-                                    onChange={(e) => handleDateChange(e.target.value)}
+                                <label
                                     style={{
-                                        padding: '8px 10px',
-                                        borderRadius: '10px',
-                                        border: '1px solid var(--border)',
-                                        background: 'var(--bg-page)',
-                                        color: 'var(--text-primary)',
-                                        fontSize: '0.95rem',
-                                        minWidth: '150px',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: 6,
+                                        cursor: 'pointer',
+                                        background: 'var(--bg-surface)',
+                                        border: '1px solid var(--border-default)',
+                                        padding: '6px 10px',
+                                        borderRadius: 'var(--radius-sm)',
+                                        fontFamily: 'var(--font-mono)',
+                                        fontSize: '0.85rem',
                                     }}
-                                />
+                                >
+                                    <span>{formatDate(entryDate)}</span>
+                                    <Pencil size={12} style={{ color: 'var(--text-muted)' }} />
+                                    <input
+                                        type="date"
+                                        value={entryDate}
+                                        max={today}
+                                        onChange={(e) => handleDateChange(e.target.value)}
+                                        style={{
+                                            position: 'absolute',
+                                            opacity: 0,
+                                            width: 0,
+                                            height: 0,
+                                            padding: 0,
+                                            border: 'none',
+                                        }}
+                                    />
+                                </label>
                             </span>
                         </div>
                         <div className="confirm-row">
                             <span className="confirm-label">Source</span>
-                            <span className="confirm-value">{sourceLabel}</span>
+                            <span className="badge badge-info">{sourceLabel}</span>
                         </div>
-                        <div className="confirm-row" style={{ borderBottom: 'none' }}>
-                            <span className="confirm-label" style={{ fontSize: '1.1rem' }}>Total</span>
-                            <span className="confirm-value confirm-total">₹{lineTotal}</span>
+                        <div className="confirm-row" style={{ borderBottom: 'none', paddingTop: 14 }}>
+                            <span className="confirm-label" style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                                TOTAL
+                            </span>
+                            <span className="confirm-total">₹{lineTotal}</span>
                         </div>
                     </div>
 
                     {isBackdated && (
                         <div
                             style={{
-                                marginTop: '12px',
-                                padding: '12px 14px',
-                                borderRadius: '12px',
-                                background: 'rgba(245, 158, 11, 0.12)',
-                                border: '1px solid rgba(245, 158, 11, 0.35)',
-                                color: '#92400e',
-                                fontSize: '0.92rem',
-                                fontWeight: 600,
+                                marginTop: 12,
+                                padding: '10px 12px',
+                                borderRadius: 'var(--radius-md)',
+                                background: 'var(--warning-bg)',
+                                border: '1px solid rgba(245, 158, 11, 0.3)',
+                                color: 'var(--warning)',
+                                fontSize: '0.85rem',
+                                fontWeight: 500,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
                             }}
                         >
-                            You are adding an entry for a previous date.
+                            <AlertTriangle size={16} strokeWidth={2} />
+                            Adding a backdated entry for a previous date
                         </div>
                     )}
 
@@ -657,69 +888,94 @@ export default function AddEntry() {
 
                     <button
                         className="btn btn-success btn-full btn-lg"
+                        style={{ marginTop: 16 }}
                         onClick={() => handleSubmit()}
                         disabled={loading}
                     >
-                        {loading ? '⏳ Saving...' : '✅ Save Entry'}
+                        {loading ? (
+                            <>
+                                <div className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />
+                                Saving…
+                            </>
+                        ) : (
+                            <>
+                                <CheckCircle2 size={18} strokeWidth={2} />
+                                Save Entry
+                            </>
+                        )}
                     </button>
                 </div>
             )}
 
+            {/* ── Duplicate Modal ─────────────────────────────────── */}
             {duplicateState && (
-                <div
-                    style={{
-                        position: 'fixed',
-                        inset: 0,
-                        background: 'rgba(15, 23, 42, 0.65)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        padding: '20px',
-                        zIndex: 1000,
-                    }}
-                    onClick={() => setDuplicateState(null)}
-                >
+                <div className="modal-backdrop" onClick={() => setDuplicateState(null)}>
                     <div
-                        className="card"
-                        style={{ width: '100%', maxWidth: '420px', padding: '24px' }}
+                        className="modal-content"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <h3 style={{ marginBottom: '12px' }}>Duplicate Entry Found</h3>
-                        <p style={{ color: 'var(--text-secondary)', marginBottom: '16px', fontSize: '0.92rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <div
+                                    style={{
+                                        width: 32,
+                                        height: 32,
+                                        borderRadius: 8,
+                                        background: 'var(--warning-bg)',
+                                        color: 'var(--warning)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                    }}
+                                >
+                                    <AlertTriangle size={18} strokeWidth={2} />
+                                </div>
+                                <h3 style={{ fontSize: '1.05rem' }}>Duplicate Entry</h3>
+                            </div>
+                            <button
+                                className="icon-btn"
+                                onClick={() => setDuplicateState(null)}
+                                aria-label="Close"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <p
+                            style={{
+                                color: 'var(--text-secondary)',
+                                marginBottom: 14,
+                                fontSize: '0.88rem',
+                            }}
+                        >
                             A matching entry already exists for this customer, product, date, and source.
                         </p>
 
                         <div
                             style={{
-                                background: 'var(--bg-page)',
-                                border: '1px solid var(--border)',
-                                borderRadius: '12px',
-                                padding: '12px',
-                                marginBottom: '16px',
-                                fontSize: '0.92rem',
+                                background: 'var(--bg-elevated)',
+                                border: '1px solid var(--border-subtle)',
+                                borderRadius: 'var(--radius-md)',
+                                padding: 12,
+                                marginBottom: 16,
+                                fontSize: '0.85rem',
+                                fontFamily: 'var(--font-mono)',
+                                color: 'var(--text-secondary)',
                             }}
                         >
-                            <div>Existing quantity: {duplicateState.existingEntry.quantity} {selectedProduct?.unit}</div>
+                            <div>Quantity: {duplicateState.existingEntry.quantity} {selectedProduct?.unit}</div>
                             <div>Date: {duplicateState.existingEntry.entry_date}</div>
                             <div>Source: {duplicateState.existingEntry.source}</div>
                         </div>
 
                         {!duplicateState.editMode ? (
                             <>
-                                <div style={{ display: 'grid', gap: '10px' }}>
-                                    <button
-                                        className="btn btn-outline btn-full"
-                                        onClick={() => setDuplicateState(null)}
-                                    >
-                                        Cancel
-                                    </button>
+                                <div style={{ display: 'grid', gap: 8 }}>
                                     <button
                                         className="btn btn-primary btn-full"
                                         onClick={() =>
                                             setDuplicateState((current) =>
-                                                current
-                                                    ? { ...current, editMode: true }
-                                                    : current,
+                                                current ? { ...current, editMode: true } : current,
                                             )
                                         }
                                         disabled={!duplicateState.canEditExisting}
@@ -727,17 +983,29 @@ export default function AddEntry() {
                                         Edit Existing Entry
                                     </button>
                                     <button
-                                        className="btn btn-success btn-full"
+                                        className="btn btn-secondary btn-full"
                                         onClick={() => handleSubmit({ forceCreate: true })}
                                         disabled={loading || !duplicateState.canForceCreate}
                                     >
                                         Create Anyway
                                     </button>
+                                    <button
+                                        className="btn btn-outline btn-full"
+                                        onClick={() => setDuplicateState(null)}
+                                    >
+                                        Cancel
+                                    </button>
                                 </div>
 
                                 {!duplicateState.canEditExisting && (
-                                    <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '12px' }}>
-                                        This entry can only be edited by the user who originally created it.
+                                    <p
+                                        style={{
+                                            color: 'var(--text-muted)',
+                                            fontSize: '0.8rem',
+                                            marginTop: 10,
+                                        }}
+                                    >
+                                        Only the creator can edit this entry.
                                     </p>
                                 )}
                             </>
@@ -759,24 +1027,24 @@ export default function AddEntry() {
                                         }
                                     />
                                 </div>
-                                <div style={{ display: 'grid', gap: '10px' }}>
+                                <div style={{ display: 'grid', gap: 8 }}>
                                     <button
                                         className="btn btn-success btn-full"
                                         onClick={handleUpdateDuplicate}
                                         disabled={loading || Number(duplicateState.editQuantity) <= 0}
                                     >
+                                        <CheckCircle2 size={16} />
                                         Save Existing Entry
                                     </button>
                                     <button
                                         className="btn btn-outline btn-full"
                                         onClick={() =>
                                             setDuplicateState((current) =>
-                                                current
-                                                    ? { ...current, editMode: false }
-                                                    : current,
+                                                current ? { ...current, editMode: false } : current,
                                             )
                                         }
                                     >
+                                        <ChevronLeft size={16} />
                                         Back
                                     </button>
                                 </div>
