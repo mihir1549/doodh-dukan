@@ -7,6 +7,7 @@ import {
     Body,
     Query,
     UseGuards,
+    ForbiddenException,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { LedgerService } from './ledger.service';
@@ -67,9 +68,13 @@ export class LedgerController {
     @Roles(UserRole.OWNER, UserRole.SHOP_STAFF, UserRole.DELIVERY, UserRole.CUSTOMER, UserRole.SUPER_ADMIN)
     async getCustomerLedger(
         @TenantId() tenantId: string,
+        @CurrentUser() user: any,
         @Param('id') customerId: string,
         @Query() filters: LedgerFilterDto,
     ) {
+        if (user.role === UserRole.CUSTOMER && user.customerId !== customerId) {
+            throw new ForbiddenException('You can only view your own ledger');
+        }
         return this.ledgerService.getCustomerLedger(customerId, tenantId, filters);
     }
 
@@ -77,8 +82,12 @@ export class LedgerController {
     @Roles(UserRole.OWNER, UserRole.SHOP_STAFF, UserRole.DELIVERY, UserRole.CUSTOMER, UserRole.SUPER_ADMIN)
     async getCustomerBalance(
         @TenantId() tenantId: string,
+        @CurrentUser() user: any,
         @Param('id') customerId: string,
     ) {
+        if (user.role === UserRole.CUSTOMER && user.customerId !== customerId) {
+            throw new ForbiddenException('You can only view your own balance');
+        }
         return this.ledgerService.getCustomerBalance(customerId, tenantId);
     }
 

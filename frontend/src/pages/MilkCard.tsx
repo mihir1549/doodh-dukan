@@ -1,23 +1,62 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../AuthContext';
-import { entryApi, summaryApi, userApi } from '../api';
+import { entryApi, summaryApi, userApi, ledgerApi } from '../api';
+
+type Tab = 'CARD' | 'PASSBOOK';
+
+const ENTRY_LABELS: Record<string, string> = {
+    OPENING_BALANCE: 'Opening Balance',
+    BILL_POSTED: 'Monthly Bill',
+    PAYMENT: 'Payment',
+    CARRY_FORWARD: 'Carried Forward',
+    ADVANCE_ADJUSTED: 'Advance Adjusted',
+};
+
+function formatLedgerDate(d: string) {
+    if (!d) return '';
+    const [y, m, day] = d.split('-');
+    return `${day}/${m}/${y.slice(2)}`;
+}
+
+function formatMonthYear(my: string) {
+    const [y, m] = my.split('-');
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${months[parseInt(m, 10) - 1]} ${y}`;
+}
+
+function formatAmount(n: number) {
+    return `₹${Math.abs(n).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+}
 
 export default function MilkCard() {
     const { user, logout } = useAuth();
+    const [tab, setTab] = useState<Tab>('CARD');
     const [month, setMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
     const [entries, setEntries] = useState<any[]>([]);
     const [summary, setSummary] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+
+    // Passbook state
+    const [passbookEntries, setPassbookEntries] = useState<any[]>([]);
+    const [passbookBalance, setPassbookBalance] = useState<number>(0);
+    const [passbookLoading, setPassbookLoading] = useState(false);
+    const [passbookLoaded, setPassbookLoaded] = useState(false);
 
     const [showSettings, setShowSettings] = useState(false);
     const [pinData, setPinData] = useState({ oldPin: '', newPin: '' });
     const [pinStatus, setPinStatus] = useState({ loading: false, error: '', success: '' });
 
     useEffect(() => {
-        if (user?.customer_id) {
+        if (user?.customer_id && tab === 'CARD') {
             loadData();
         }
-    }, [month, user]);
+    }, [month, user, tab]);
+
+    useEffect(() => {
+        if (user?.customer_id && tab === 'PASSBOOK' && !passbookLoaded) {
+            loadPassbook();
+        }
+    }, [tab, user, passbookLoaded]);
 
     const loadData = async () => {
         setLoading(true);
@@ -32,6 +71,24 @@ export default function MilkCard() {
             console.error('Failed to load milk card data', err);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const loadPassbook = async () => {
+        if (!user?.customer_id) return;
+        setPassbookLoading(true);
+        try {
+            const [ledgerRes, balRes] = await Promise.all([
+                ledgerApi.getCustomerLedger(user.customer_id, { page: 1, limit: 100 }),
+                ledgerApi.getCustomerBalance(user.customer_id),
+            ]);
+            setPassbookEntries(ledgerRes.data?.data?.data || []);
+            setPassbookBalance(Number(balRes.data?.data?.current_balance ?? 0));
+            setPassbookLoaded(true);
+        } catch (err) {
+            console.error('Failed to load passbook', err);
+        } finally {
+            setPassbookLoading(false);
         }
     };
 
@@ -92,20 +149,71 @@ export default function MilkCard() {
                 </div>
             </div>
 
-            {/* Month Selector */}
-            <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-                <input
-                    type="month"
-                    value={month}
-                    onChange={(e) => setMonth(e.target.value)}
+            {/* Tab Switcher */}
+            <div style={{
+                display: 'flex',
+                background: 'var(--bg-card)',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--border)',
+                padding: '4px',
+                marginBottom: '20px',
+                gap: '4px',
+            }}>
+                <button
+                    onClick={() => setTab('CARD')}
                     style={{
-                        flex: 1, padding: '12px', borderRadius: 'var(--radius-md)',
-                        border: '1px solid var(--border)', background: 'var(--bg-card)',
-                        color: 'var(--text-primary)', fontSize: '1rem'
+                        flex: 1,
+                        padding: '10px',
+                        border: 'none',
+                        borderRadius: 'var(--radius-sm)',
+                        background: tab === 'CARD' ? 'var(--accent)' : 'transparent',
+                        color: tab === 'CARD' ? '#fff' : 'var(--text-secondary)',
+                        fontWeight: tab === 'CARD' ? 700 : 500,
+                        cursor: 'pointer',
+                        fontSize: '0.95rem',
+                        transition: 'all 0.15s',
                     }}
-                />
+                >
+                    🥛 My Card
+                </button>
+                <button
+                    onClick={() => setTab('PASSBOOK')}
+                    style={{
+                        flex: 1,
+                        padding: '10px',
+                        border: 'none',
+                        borderRadius: 'var(--radius-sm)',
+                        background: tab === 'PASSBOOK' ? 'var(--accent)' : 'transparent',
+                        color: tab === 'PASSBOOK' ? '#fff' : 'var(--text-secondary)',
+                        fontWeight: tab === 'PASSBOOK' ? 700 : 500,
+                        cursor: 'pointer',
+                        fontSize: '0.95rem',
+                        transition: 'all 0.15s',
+                    }}
+                >
+                    📒 My Passbook
+                </button>
             </div>
 
+            {/* Month Selector — only on Card tab */}
+            {tab === 'CARD' && (
+                <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+                    <input
+                        type="month"
+                        value={month}
+                        onChange={(e) => setMonth(e.target.value)}
+                        style={{
+                            flex: 1, padding: '12px', borderRadius: 'var(--radius-md)',
+                            border: '1px solid var(--border)', background: 'var(--bg-card)',
+                            color: 'var(--text-primary)', fontSize: '1rem'
+                        }}
+                    />
+                </div>
+            )}
+
+            {/* ========== CARD TAB ========== */}
+            {tab === 'CARD' && (
+            <>
             {/* Summary Info */}
             <div style={{
                 display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '24px'
@@ -198,6 +306,122 @@ export default function MilkCard() {
 
             )}
 
+            <p style={{ marginTop: '20px', textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                Showing entries for {new Date(month).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}
+            </p>
+            </>
+            )}
+
+            {/* ========== PASSBOOK TAB ========== */}
+            {tab === 'PASSBOOK' && (
+                <>
+                    {/* Balance Card */}
+                    <div style={{
+                        background: passbookBalance > 0 ? 'var(--danger-light)' : passbookBalance < 0 ? 'var(--success-light)' : 'var(--bg-card)',
+                        border: `1px solid ${passbookBalance > 0 ? 'var(--danger)' : passbookBalance < 0 ? 'var(--success)' : 'var(--border)'}`,
+                        borderRadius: 'var(--radius-md)',
+                        padding: '20px',
+                        marginBottom: '20px',
+                        textAlign: 'center',
+                    }}>
+                        {passbookBalance > 0 ? (
+                            <>
+                                <div style={{ fontSize: '0.85rem', color: 'var(--danger)', fontWeight: 600, marginBottom: '4px' }}>You owe</div>
+                                <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--danger)' }}>
+                                    {formatAmount(passbookBalance)}
+                                </div>
+                            </>
+                        ) : passbookBalance < 0 ? (
+                            <>
+                                <div style={{ fontSize: '0.85rem', color: 'var(--success)', fontWeight: 600, marginBottom: '4px' }}>Advance (credit)</div>
+                                <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--success)' }}>
+                                    {formatAmount(passbookBalance)}
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div style={{ fontSize: '0.85rem', color: 'var(--success)', fontWeight: 600, marginBottom: '4px' }}>Status</div>
+                                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--success)' }}>
+                                    All settled ✅
+                                </div>
+                            </>
+                        )}
+                    </div>
+
+                    {/* Passbook Table */}
+                    {passbookLoading ? (
+                        <div className="loading"><div className="spinner" /></div>
+                    ) : passbookEntries.length === 0 ? (
+                        <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)' }}>
+                            <div style={{ fontSize: '2.5rem', marginBottom: '10px' }}>📒</div>
+                            <p>No passbook entries yet</p>
+                        </div>
+                    ) : (
+                        <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', overflow: 'hidden' }}>
+                            <div style={{
+                                display: 'grid',
+                                gridTemplateColumns: '70px 1fr 80px 80px',
+                                gap: '4px',
+                                padding: '10px',
+                                background: 'var(--bg-secondary)',
+                                fontSize: '0.72rem',
+                                color: 'var(--text-muted)',
+                                fontWeight: 700,
+                                borderBottom: '1px solid var(--border)',
+                            }}>
+                                <span>DATE</span>
+                                <span>DESCRIPTION</span>
+                                <span style={{ textAlign: 'right' }}>DEBIT</span>
+                                <span style={{ textAlign: 'right' }}>CREDIT</span>
+                            </div>
+
+                            <div style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+                                {passbookEntries.map((e) => {
+                                    const isDebit = e.direction === 'DEBIT';
+                                    const isRejected = e.status === 'REJECTED';
+                                    const isPending = e.status === 'PENDING';
+                                    const modeSuffix = e.payment_mode ? ` (${e.payment_mode})` : '';
+
+                                    let desc = ENTRY_LABELS[e.entry_type] ?? e.entry_type;
+                                    if (e.entry_type === 'BILL_POSTED') {
+                                        desc = `Bill – ${e.reference_month ? formatMonthYear(e.reference_month) : ''}`;
+                                    } else if (e.entry_type === 'PAYMENT') {
+                                        const suffix = isRejected ? '❌ Rejected' : isPending ? '⏳ Pending' : '✅';
+                                        desc = `Payment${modeSuffix} ${suffix}`;
+                                    }
+
+                                    return (
+                                        <div key={e.id} style={{
+                                            display: 'grid',
+                                            gridTemplateColumns: '70px 1fr 80px 80px',
+                                            gap: '4px',
+                                            padding: '10px',
+                                            borderBottom: '1px solid var(--border)',
+                                            background: isRejected ? 'transparent' : isDebit ? 'rgba(239,68,68,0.05)' : 'rgba(34,197,94,0.05)',
+                                            opacity: isRejected ? 0.5 : 1,
+                                            textDecoration: isRejected ? 'line-through' : 'none',
+                                            fontSize: '0.85rem',
+                                            alignItems: 'center',
+                                        }}>
+                                            <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                                                {formatLedgerDate(e.transaction_date)}
+                                            </span>
+                                            <span>{desc}</span>
+                                            <span style={{ textAlign: 'right', color: 'var(--danger)', fontWeight: isDebit ? 700 : 400 }}>
+                                                {isDebit ? formatAmount(e.amount) : ''}
+                                            </span>
+                                            <span style={{ textAlign: 'right', color: 'var(--success)', fontWeight: !isDebit ? 700 : 400 }}>
+                                                {!isDebit ? formatAmount(e.amount) : ''}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+                </>
+            )}
+
             {/* Settings / Password Modal */}
             {showSettings && (
                 <div className="modal-backdrop" onClick={() => setShowSettings(false)}>
@@ -246,10 +470,6 @@ export default function MilkCard() {
                     </div>
                 </div>
             )}
-
-            <p style={{ marginTop: '20px', textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                Showing entries for {new Date(month).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}
-            </p>
         </div>
     );
 }
