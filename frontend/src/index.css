@@ -1020,6 +1020,23 @@ input::placeholder {
   font-family: var(--font-display);
   flex-shrink: 0;
 }
+
+.customer-id-badge {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  border-radius: 8px;
+  background: var(--bg-overlay);
+  border: 1px solid var(--border-default);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--brand-primary);
+  flex-shrink: 0;
+}
 .customer-name {
   font-family: var(--font-display);
   font-weight: 600;

@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { customerApi, ledgerApi } from '../api';
 import { useAuth } from '../AuthContext';
-import { avatarColor, avatarLetter, formatAddress } from '../utils/avatar';
+import { formatAddress } from '../utils/avatar';
 import SetOpeningBalanceModal from '../components/SetOpeningBalanceModal';
 
 function formatBalance(n: number) {
@@ -252,8 +252,6 @@ export default function Customers() {
                                 : bal < 0 ? 'var(--success-bg)'
                                     : 'transparent';
                         const hasOB = openingFlags[c.id];
-                        const color = avatarColor(c.name);
-                        const letter = avatarLetter(c.name);
                         const shortAddress = formatAddress(c.address, 32);
                         const isLast = idx === customers.length - 1;
 
@@ -270,11 +268,8 @@ export default function Customers() {
                                     style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}
                                     onClick={() => navigate(`/customers/${c.id}`)}
                                 >
-                                    <div
-                                        className="customer-avatar"
-                                        style={{ background: color.bg, color: color.fg, width: 40, height: 40 }}
-                                    >
-                                        {letter}
+                                    <div className="customer-id-badge">
+                                        #{c.customer_number}
                                     </div>
                                     <div style={{ flex: 1, minWidth: 0 }}>
                                         <div
@@ -294,8 +289,7 @@ export default function Customers() {
                                                 color: 'var(--text-secondary)',
                                             }}
                                         >
-                                            #{c.customer_number}
-                                            {c.phone ? ` · ${c.phone}` : ''}
+                                            {c.phone || '—'}
                                         </div>
                                         {shortAddress && (
                                             <div

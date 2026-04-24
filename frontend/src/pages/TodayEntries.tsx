@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../AuthContext';
 import { entryApi } from '../api';
-import { avatarColor, avatarLetter, formatAddress } from '../utils/avatar';
+import { formatAddress } from '../utils/avatar';
 
 export default function TodayEntries() {
     const navigate = useNavigate();
@@ -147,8 +147,6 @@ export default function TodayEntries() {
             ) : (
                 Object.values(grouped).map((group: any) => {
                     const c = group.customer;
-                    const color = avatarColor(c?.name);
-                    const letter = avatarLetter(c?.name);
                     const subtotal = group.entries.reduce(
                         (s: number, e: any) => s + Number(e.line_total || 0),
                         0,
@@ -163,11 +161,8 @@ export default function TodayEntries() {
                         >
                             {/* Customer header */}
                             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
-                                <div
-                                    className="customer-avatar"
-                                    style={{ background: color.bg, color: color.fg, width: 38, height: 38, fontSize: '0.95rem' }}
-                                >
-                                    {letter}
+                                <div className="customer-id-badge">
+                                    #{c?.customer_number ?? '—'}
                                 </div>
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                     <div
@@ -187,8 +182,7 @@ export default function TodayEntries() {
                                             color: 'var(--text-secondary)',
                                         }}
                                     >
-                                        #{c?.customer_number ?? '—'}
-                                        {c?.phone ? ` · ${c.phone}` : ''}
+                                        {c?.phone || '—'}
                                     </div>
                                     {shortAddress && (
                                         <div

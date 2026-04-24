@@ -6,7 +6,6 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../AuthContext';
 import { summaryApi } from '../api';
-import { avatarColor, avatarLetter } from '../utils/avatar';
 
 export default function MonthlySummary() {
     const navigate = useNavigate();
@@ -203,8 +202,6 @@ export default function MonthlySummary() {
                     }}
                 >
                     {filtered.map((s: any, idx: number) => {
-                        const color = avatarColor(s.customer_name);
-                        const letter = avatarLetter(s.customer_name);
                         const isLast = idx === filtered.length - 1;
 
                         return (
@@ -227,17 +224,8 @@ export default function MonthlySummary() {
                                     (e.currentTarget as HTMLDivElement).style.background = 'transparent';
                                 }}
                             >
-                                <div
-                                    className="customer-avatar"
-                                    style={{
-                                        background: color.bg,
-                                        color: color.fg,
-                                        width: 38,
-                                        height: 38,
-                                        fontSize: '0.95rem',
-                                    }}
-                                >
-                                    {letter}
+                                <div className="customer-id-badge">
+                                    #{s.customer_number}
                                 </div>
 
                                 <div style={{ flex: 1, minWidth: 0 }}>

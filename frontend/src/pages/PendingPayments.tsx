@@ -6,7 +6,6 @@ import {
 } from 'lucide-react';
 import { ledgerApi } from '../api';
 import { useAuth } from '../AuthContext';
-import { avatarColor, avatarLetter } from '../utils/avatar';
 
 function timeAgo(iso: string) {
     const diff = Date.now() - new Date(iso).getTime();
@@ -119,8 +118,6 @@ export default function PendingPayments() {
                 </div>
             ) : (
                 payments.map((p) => {
-                    const color = avatarColor(p.customer_name);
-                    const letter = avatarLetter(p.customer_name);
                     const busy = processing === p.id;
                     return (
                         <div
@@ -137,17 +134,8 @@ export default function PendingPayments() {
                                     marginBottom: 10,
                                 }}
                             >
-                                <div
-                                    className="customer-avatar"
-                                    style={{
-                                        background: color.bg,
-                                        color: color.fg,
-                                        width: 40,
-                                        height: 40,
-                                        fontSize: '0.95rem',
-                                    }}
-                                >
-                                    {letter}
+                                <div className="customer-id-badge">
+                                    #{p.customer_number}
                                 </div>
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                     <div

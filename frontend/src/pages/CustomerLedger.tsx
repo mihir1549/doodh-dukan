@@ -6,7 +6,6 @@ import {
 } from 'lucide-react';
 import { ledgerApi, customerApi } from '../api';
 import { useAuth } from '../AuthContext';
-import { avatarColor, avatarLetter } from '../utils/avatar';
 import RecordPaymentModal from '../components/RecordPaymentModal';
 
 const ENTRY_LABELS: Record<string, string> = {
@@ -90,8 +89,6 @@ export default function CustomerLedger() {
                 ? { label: 'Advance', color: 'var(--success)', bg: 'var(--success-bg)', icon: <ArrowDownLeft size={20} strokeWidth={2} /> }
                 : { label: 'Settled', color: 'var(--text-muted)', bg: 'rgba(255,255,255,0.04)', icon: <CheckCircle2 size={20} strokeWidth={2} /> };
 
-    const color = avatarColor(customer?.name);
-    const letter = avatarLetter(customer?.name);
 
     return (
         <div className="page">
@@ -115,10 +112,10 @@ export default function CustomerLedger() {
                 >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
                         <div
-                            className="customer-avatar"
-                            style={{ background: color.bg, color: color.fg, width: 44, height: 44, fontSize: '1rem' }}
+                            className="customer-id-badge"
+                            style={{ width: 44, height: 44, minWidth: 44, fontSize: 13, borderRadius: 10 }}
                         >
-                            {letter}
+                            #{customer?.customer_number}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                             <div
@@ -138,8 +135,7 @@ export default function CustomerLedger() {
                                     color: 'var(--text-secondary)',
                                 }}
                             >
-                                #{customer.customer_number}
-                                {customer.phone ? ` · ${customer.phone}` : ''}
+                                {customer.phone || '—'}
                             </div>
                         </div>
                     </div>

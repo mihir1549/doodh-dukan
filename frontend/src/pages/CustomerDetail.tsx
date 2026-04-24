@@ -5,7 +5,6 @@ import {
     Lock, Unlock, X, CheckCircle2, Wallet, TrendingUp, BookOpen,
 } from 'lucide-react';
 import { customerApi, summaryApi, entryApi } from '../api';
-import { avatarColor, avatarLetter } from '../utils/avatar';
 
 export default function CustomerDetail() {
     const navigate = useNavigate();
@@ -94,18 +93,20 @@ export default function CustomerDetail() {
         productBreakdown[pId].amount += Number(e.line_total);
     });
 
-    // Group entries by date
-    const entriesByDate: Record<string, any[]> = {};
-    entries.forEach((e: any) => {
-        const date = e.entry_date;
-        if (!entriesByDate[date]) entriesByDate[date] = [];
-        entriesByDate[date].push(e);
-    });
-
-    const formatDate = (dateStr: string) => {
-        const d = new Date(dateStr + 'T00:00:00');
-        return d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+    // Group entries by day-of-month (same shape as MilkCard for consistent admin/customer view)
+    const getDaysInMonth = (yearMonth: string) => {
+        const [y, m] = yearMonth.split('-').map(Number);
+        return new Date(y, m, 0).getDate();
     };
+    const daysCount = getDaysInMonth(monthYear);
+    const dayRows = Array.from({ length: daysCount }, (_, i) => i + 1);
+
+    const entriesByDay: Record<number, any[]> = {};
+    entries.forEach((e: any) => {
+        const day = new Date(e.entry_date + 'T00:00:00').getDate();
+        if (!entriesByDay[day]) entriesByDay[day] = [];
+        entriesByDay[day].push(e);
+    });
 
     if (loading) {
         return (
@@ -139,9 +140,6 @@ export default function CustomerDetail() {
         );
     }
 
-    const color = avatarColor(customer.name);
-    const letter = avatarLetter(customer.name);
-
     return (
         <div className="page">
             <div className="page-header">
@@ -167,16 +165,10 @@ export default function CustomerDetail() {
             >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                     <div
-                        className="customer-avatar"
-                        style={{
-                            width: 52,
-                            height: 52,
-                            fontSize: '1.3rem',
-                            background: color.bg,
-                            color: color.fg,
-                        }}
+                        className="customer-id-badge"
+                        style={{ width: 52, height: 52, minWidth: 52, fontSize: 14, borderRadius: 12 }}
                     >
-                        {letter}
+                        #{customer.customer_number}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                         <div
@@ -364,116 +356,152 @@ export default function CustomerDetail() {
                 </>
             )}
 
-            {/* Day-by-day entries */}
-            {Object.keys(entriesByDate).length > 0 && (
-                <>
-                    <h3
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 8,
-                            fontSize: '0.78rem',
-                            color: 'var(--text-secondary)',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.05em',
-                            fontWeight: 600,
-                            marginBottom: 10,
-                        }}
-                    >
-                        <Calendar size={14} strokeWidth={2} />
-                        Day-by-Day
-                    </h3>
-                    {Object.entries(entriesByDate).map(([date, dateEntries]) => (
-                        <div
-                            key={date}
-                            className="card"
-                            style={{ marginBottom: 10, padding: '10px 16px' }}
-                        >
+            {/* Day-by-day table (same format as customer's MilkCard) */}
+            <h3
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    fontSize: '0.78rem',
+                    color: 'var(--text-secondary)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    fontWeight: 600,
+                    marginBottom: 10,
+                }}
+            >
+                <Calendar size={14} strokeWidth={2} />
+                Day-by-Day
+            </h3>
+            <div
+                style={{
+                    background: 'var(--bg-surface)',
+                    borderRadius: 'var(--radius-lg)',
+                    border: '1px solid var(--border-subtle)',
+                    overflow: 'hidden',
+                }}
+            >
+                <div
+                    style={{
+                        display: 'grid',
+                        gridTemplateColumns: '40px 1fr 60px 60px',
+                        padding: '10px 14px',
+                        background: 'var(--bg-elevated)',
+                        borderBottom: '1px solid var(--border-subtle)',
+                        fontWeight: 700,
+                        fontSize: '0.7rem',
+                        color: 'var(--text-muted)',
+                        letterSpacing: '0.05em',
+                        textTransform: 'uppercase',
+                    }}
+                >
+                    <div style={{ textAlign: 'center' }}>Date</div>
+                    <div>Details</div>
+                    <div style={{ textAlign: 'center' }}>By</div>
+                    <div style={{ textAlign: 'right' }}>Time</div>
+                </div>
+
+                <div style={{ maxHeight: '58vh', overflowY: 'auto' }}>
+                    {dayRows.map((day) => {
+                        const dayEntries = entriesByDay[day] || [];
+                        const hasEntries = dayEntries.length > 0;
+
+                        const productTotals: Record<string, { qty: number; name: string; category: string }> = {};
+                        dayEntries.forEach((e: any) => {
+                            const pid = e.product?.id || 'unknown';
+                            if (!productTotals[pid]) {
+                                productTotals[pid] = {
+                                    qty: 0,
+                                    name: e.product?.name || 'Item',
+                                    category: e.product?.category || '',
+                                };
+                            }
+                            productTotals[pid].qty += Number(e.quantity);
+                        });
+
+                        const detailsStr = Object.values(productTotals)
+                            .map((p) => {
+                                const qtyNum = Number(p.qty);
+                                const isLoose =
+                                    p.name.toLowerCase().includes('loose') ||
+                                    p.category === 'LOOSE_MILK';
+                                return isLoose
+                                    ? `${qtyNum.toFixed(1)}L`
+                                    : `${qtyNum}${p.name.split(' ')[0]}`;
+                            })
+                            .join(', ');
+
+                        const lastEntry = dayEntries[dayEntries.length - 1];
+                        const byName =
+                            hasEntries && (lastEntry?.created_by_user?.name || lastEntry?.entered_by_user?.name)
+                                ? (lastEntry.created_by_user?.name || lastEntry.entered_by_user?.name).split(' ')[0]
+                                : '—';
+
+                        return (
                             <div
+                                key={day}
                                 style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between',
-                                    fontSize: '0.8rem',
-                                    color: 'var(--brand-primary)',
-                                    fontWeight: 600,
-                                    fontFamily: 'var(--font-display)',
-                                    marginBottom: 6,
-                                    paddingBottom: 6,
+                                    display: 'grid',
+                                    gridTemplateColumns: '40px 1fr 60px 60px',
+                                    padding: '10px 14px',
                                     borderBottom: '1px solid var(--border-subtle)',
+                                    alignItems: 'center',
+                                    fontSize: '0.88rem',
+                                    background: hasEntries ? 'transparent' : 'rgba(255,255,255,0.015)',
                                 }}
                             >
-                                <span>{formatDate(date)}</span>
-                                <span
-                                    className="amount-small amount-positive"
-                                    style={{ fontWeight: 500 }}
+                                <div
+                                    style={{
+                                        fontFamily: 'var(--font-mono)',
+                                        fontWeight: 500,
+                                        color: hasEntries ? 'var(--text-secondary)' : 'var(--text-muted)',
+                                        textAlign: 'center',
+                                    }}
                                 >
-                                    ₹{dateEntries.reduce((s, e) => s + Number(e.line_total || 0), 0).toFixed(2)}
-                                </span>
+                                    {day}
+                                </div>
+                                <div
+                                    style={{
+                                        color: hasEntries ? 'var(--text-primary)' : 'var(--text-muted)',
+                                        fontWeight: hasEntries ? 500 : 400,
+                                        fontFamily: hasEntries ? 'var(--font-mono)' : 'var(--font-body)',
+                                    }}
+                                >
+                                    {hasEntries ? detailsStr : '—'}
+                                </div>
+                                <div
+                                    style={{
+                                        color: 'var(--text-muted)',
+                                        fontSize: '0.72rem',
+                                        textAlign: 'center',
+                                        whiteSpace: 'nowrap',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                    }}
+                                >
+                                    {byName}
+                                </div>
+                                <div
+                                    style={{
+                                        color: 'var(--text-muted)',
+                                        fontSize: '0.72rem',
+                                        textAlign: 'right',
+                                        fontFamily: 'var(--font-mono)',
+                                    }}
+                                >
+                                    {hasEntries && lastEntry?.created_at
+                                        ? new Date(lastEntry.created_at).toLocaleTimeString('en-IN', {
+                                              hour: '2-digit',
+                                              minute: '2-digit',
+                                              hour12: false,
+                                          })
+                                        : '—'}
+                                </div>
                             </div>
-                            {dateEntries.map((entry: any) => {
-                                const byName = entry.created_by_user?.name || entry.entered_by_user?.name;
-                                return (
-                                    <div
-                                        key={entry.id}
-                                        style={{
-                                            display: 'flex',
-                                            justifyContent: 'space-between',
-                                            alignItems: 'center',
-                                            padding: '6px 0',
-                                            gap: 10,
-                                        }}
-                                    >
-                                        <div style={{ flex: 1, minWidth: 0 }}>
-                                            <div
-                                                style={{
-                                                    fontSize: '0.9rem',
-                                                    color: 'var(--text-primary)',
-                                                    fontWeight: 500,
-                                                }}
-                                            >
-                                                {entry.product?.name || 'Product'}
-                                                <span
-                                                    style={{
-                                                        fontFamily: 'var(--font-mono)',
-                                                        color: 'var(--text-secondary)',
-                                                        marginLeft: 6,
-                                                        fontSize: '0.8rem',
-                                                        fontWeight: 400,
-                                                    }}
-                                                >
-                                                    {Number(entry.quantity)}{entry.product?.unit || ''} × ₹{Number(entry.unit_price).toFixed(2)}
-                                                </span>
-                                            </div>
-                                            <div
-                                                style={{
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: 6,
-                                                    marginTop: 2,
-                                                    fontSize: '0.72rem',
-                                                    color: 'var(--text-muted)',
-                                                }}
-                                            >
-                                                {entry.source && (
-                                                    <span className="badge badge-muted">{entry.source}</span>
-                                                )}
-                                                {byName && <span>by {byName}</span>}
-                                            </div>
-                                        </div>
-                                        <span
-                                            className="amount-small amount-positive"
-                                            style={{ fontWeight: 500 }}
-                                        >
-                                            ₹{Number(entry.line_total).toFixed(2)}
-                                        </span>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    ))}
-                </>
-            )}
+                        );
+                    })}
+                </div>
+            </div>
 
             {/* Edit Profile Modal */}
             {isEditing && (

@@ -6,7 +6,6 @@ import {
 } from 'lucide-react';
 import { tenantApi } from '../api';
 import type { Tenant } from '../api';
-import { avatarColor, avatarLetter } from '../utils/avatar';
 
 export default function Shops() {
     const navigate = useNavigate();
@@ -86,8 +85,6 @@ export default function Shops() {
                     }}
                 >
                     {filteredShops.map((shop, idx) => {
-                        const color = avatarColor(shop.shop_name);
-                        const letter = avatarLetter(shop.shop_name);
                         const isLast = idx === filteredShops.length - 1;
                         return (
                             <div
@@ -104,16 +101,8 @@ export default function Shops() {
                                         gap: 12,
                                     }}
                                 >
-                                    <div
-                                        className="customer-avatar"
-                                        style={{
-                                            background: color.bg,
-                                            color: color.fg,
-                                            width: 40,
-                                            height: 40,
-                                        }}
-                                    >
-                                        {letter}
+                                    <div className="customer-id-badge">
+                                        <Building2 size={18} strokeWidth={1.75} />
                                     </div>
                                     <div style={{ flex: 1, minWidth: 0 }}>
                                         <div

@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { customerApi, productApi, entryApi } from '../api';
 import { useAuth } from '../AuthContext';
-import { avatarColor, avatarLetter, formatAddress } from '../utils/avatar';
+import { formatAddress } from '../utils/avatar';
 
 const SCROLL_CONTAINER_ID = 'customer-list-scroll-container';
 
@@ -370,8 +370,6 @@ export default function AddEntry() {
                             bubbleScroll
                         >
                             {filteredCustomers.map((c) => {
-                                const color = avatarColor(c.name);
-                                const letter = avatarLetter(c.name);
                                 const shortAddress = formatAddress(c.address, 30);
                                 return (
                                     <div
@@ -384,11 +382,8 @@ export default function AddEntry() {
                                             borderBottom: '1px solid var(--border-subtle)',
                                         }}
                                     >
-                                        <div
-                                            className="customer-avatar"
-                                            style={{ background: color.bg, color: color.fg }}
-                                        >
-                                            {letter}
+                                        <div className="customer-id-badge">
+                                            #{c.customer_number}
                                         </div>
                                         <div style={{ flex: 1, minWidth: 0 }}>
                                             <div className="customer-name" style={{ marginBottom: 2 }}>
