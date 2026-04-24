@@ -10,3 +10,15 @@ export function formatAddress(raw?: string | null, maxLen = 34): string {
     if (s.length > maxLen) s = s.slice(0, maxLen).trimEnd() + '…';
     return s;
 }
+
+/**
+ * Font size for the .customer-id-badge based on how many digits we need to fit.
+ * Default (1-2 digits) = 15px, 3 digits = 12px, 4+ digits = 10px.
+ */
+export function idBadgeFontSize(id?: number | string | null): number {
+    if (id === undefined || id === null || id === '') return 15;
+    const len = String(id).length;
+    if (len >= 4) return 10;
+    if (len === 3) return 12;
+    return 15;
+}

@@ -5,6 +5,7 @@ import {
     CheckCircle2, AlertCircle,
 } from 'lucide-react';
 import { ledgerApi } from '../api';
+import { idBadgeFontSize } from '../utils/avatar';
 import { useAuth } from '../AuthContext';
 
 function timeAgo(iso: string) {
@@ -134,8 +135,11 @@ export default function PendingPayments() {
                                     marginBottom: 10,
                                 }}
                             >
-                                <div className="customer-id-badge">
-                                    #{p.customer_number}
+                                <div
+                                    className="customer-id-badge"
+                                    style={{ fontSize: idBadgeFontSize(p.customer_number) }}
+                                >
+                                    {p.customer_number}
                                 </div>
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                     <div

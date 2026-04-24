@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { customerApi, ledgerApi } from '../api';
 import { useAuth } from '../AuthContext';
-import { formatAddress } from '../utils/avatar';
+import { formatAddress, idBadgeFontSize } from '../utils/avatar';
 import SetOpeningBalanceModal from '../components/SetOpeningBalanceModal';
 
 function formatBalance(n: number) {
@@ -268,8 +268,11 @@ export default function Customers() {
                                     style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}
                                     onClick={() => navigate(`/customers/${c.id}`)}
                                 >
-                                    <div className="customer-id-badge">
-                                        #{c.customer_number}
+                                    <div
+                                        className="customer-id-badge"
+                                        style={{ fontSize: idBadgeFontSize(c.customer_number) }}
+                                    >
+                                        {c.customer_number}
                                     </div>
                                     <div style={{ flex: 1, minWidth: 0 }}>
                                         <div

@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../AuthContext';
 import { summaryApi } from '../api';
+import { idBadgeFontSize } from '../utils/avatar';
 
 export default function MonthlySummary() {
     const navigate = useNavigate();
@@ -224,8 +225,11 @@ export default function MonthlySummary() {
                                     (e.currentTarget as HTMLDivElement).style.background = 'transparent';
                                 }}
                             >
-                                <div className="customer-id-badge">
-                                    #{s.customer_number}
+                                <div
+                                    className="customer-id-badge"
+                                    style={{ fontSize: idBadgeFontSize(s.customer_number) }}
+                                >
+                                    {s.customer_number}
                                 </div>
 
                                 <div style={{ flex: 1, minWidth: 0 }}>

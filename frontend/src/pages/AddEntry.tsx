@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { customerApi, productApi, entryApi } from '../api';
 import { useAuth } from '../AuthContext';
-import { formatAddress } from '../utils/avatar';
+import { formatAddress, idBadgeFontSize } from '../utils/avatar';
 
 const SCROLL_CONTAINER_ID = 'customer-list-scroll-container';
 
@@ -382,8 +382,11 @@ export default function AddEntry() {
                                             borderBottom: '1px solid var(--border-subtle)',
                                         }}
                                     >
-                                        <div className="customer-id-badge">
-                                            #{c.customer_number}
+                                        <div
+                                            className="customer-id-badge"
+                                            style={{ fontSize: idBadgeFontSize(c.customer_number) }}
+                                        >
+                                            {c.customer_number}
                                         </div>
                                         <div style={{ flex: 1, minWidth: 0 }}>
                                             <div className="customer-name" style={{ marginBottom: 2 }}>

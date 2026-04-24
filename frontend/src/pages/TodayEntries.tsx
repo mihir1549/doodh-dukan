@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../AuthContext';
 import { entryApi } from '../api';
-import { formatAddress } from '../utils/avatar';
+import { formatAddress, idBadgeFontSize } from '../utils/avatar';
 
 export default function TodayEntries() {
     const navigate = useNavigate();
@@ -161,8 +161,11 @@ export default function TodayEntries() {
                         >
                             {/* Customer header */}
                             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
-                                <div className="customer-id-badge">
-                                    #{c?.customer_number ?? '—'}
+                                <div
+                                    className="customer-id-badge"
+                                    style={{ fontSize: idBadgeFontSize(c?.customer_number) }}
+                                >
+                                    {c?.customer_number ?? '—'}
                                 </div>
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                     <div

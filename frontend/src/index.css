@@ -1022,9 +1022,9 @@ input::placeholder {
 }
 
 .customer-id-badge {
-  width: 40px;
-  height: 40px;
-  min-width: 40px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
   border-radius: 8px;
   background: var(--bg-overlay);
   border: 1px solid var(--border-default);
@@ -1032,10 +1032,11 @@ input::placeholder {
   align-items: center;
   justify-content: center;
   font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
   color: var(--brand-primary);
   flex-shrink: 0;
+  letter-spacing: -0.02em;
 }
 .customer-name {
   font-family: var(--font-display);

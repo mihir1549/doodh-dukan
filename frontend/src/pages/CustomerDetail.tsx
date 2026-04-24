@@ -5,6 +5,7 @@ import {
     Lock, Unlock, X, CheckCircle2, Wallet, TrendingUp, BookOpen,
 } from 'lucide-react';
 import { customerApi, summaryApi, entryApi } from '../api';
+import { idBadgeFontSize } from '../utils/avatar';
 
 export default function CustomerDetail() {
     const navigate = useNavigate();
@@ -166,9 +167,15 @@ export default function CustomerDetail() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                     <div
                         className="customer-id-badge"
-                        style={{ width: 52, height: 52, minWidth: 52, fontSize: 14, borderRadius: 12 }}
+                        style={{
+                            width: 52,
+                            height: 52,
+                            minWidth: 52,
+                            borderRadius: 12,
+                            fontSize: idBadgeFontSize(customer.customer_number) + 3,
+                        }}
                     >
-                        #{customer.customer_number}
+                        {customer.customer_number}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                         <div

@@ -5,6 +5,7 @@ import {
     XCircle, ArrowUpRight, ArrowDownLeft, Wallet,
 } from 'lucide-react';
 import { ledgerApi, customerApi } from '../api';
+import { idBadgeFontSize } from '../utils/avatar';
 import { useAuth } from '../AuthContext';
 import RecordPaymentModal from '../components/RecordPaymentModal';
 
@@ -113,9 +114,9 @@ export default function CustomerLedger() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
                         <div
                             className="customer-id-badge"
-                            style={{ width: 44, height: 44, minWidth: 44, fontSize: 13, borderRadius: 10 }}
+                            style={{ fontSize: idBadgeFontSize(customer?.customer_number) }}
                         >
-                            #{customer?.customer_number}
+                            {customer?.customer_number}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                             <div
