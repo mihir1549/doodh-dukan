@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { customerApi, ledgerApi } from '../api';
 import { useAuth } from '../AuthContext';
-import { avatarColor, avatarLetter } from '../utils/avatar';
+import { avatarColor, avatarLetter, formatAddress } from '../utils/avatar';
 import SetOpeningBalanceModal from '../components/SetOpeningBalanceModal';
 
 function formatBalance(n: number) {
@@ -254,8 +254,7 @@ export default function Customers() {
                         const hasOB = openingFlags[c.id];
                         const color = avatarColor(c.name);
                         const letter = avatarLetter(c.name);
-                        const address = (c.address || '').trim();
-                        const shortAddress = address.length > 32 ? address.slice(0, 32) + '…' : address;
+                        const shortAddress = formatAddress(c.address, 32);
                         const isLast = idx === customers.length - 1;
 
                         return (

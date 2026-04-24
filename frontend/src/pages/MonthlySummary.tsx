@@ -322,12 +322,26 @@ export default function MonthlySummary() {
 
                                 {user?.role === 'OWNER' && (
                                     <button
-                                        className="btn btn-outline"
                                         style={{
-                                            padding: '5px 10px',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: 4,
+                                            padding: '6px 10px',
                                             minHeight: 'auto',
-                                            fontSize: '0.78rem',
+                                            fontSize: '0.76rem',
+                                            fontWeight: 600,
+                                            fontFamily: 'var(--font-display)',
+                                            background: s.is_locked
+                                                ? 'var(--warning-bg)'
+                                                : 'var(--bg-elevated)',
+                                            color: s.is_locked
+                                                ? 'var(--warning)'
+                                                : 'var(--text-primary)',
+                                            border: `1px solid ${s.is_locked ? 'var(--warning)' : 'var(--border-strong)'}`,
+                                            borderRadius: 'var(--radius-md)',
+                                            cursor: 'pointer',
                                             flexShrink: 0,
+                                            transition: 'all 0.15s',
                                         }}
                                         onClick={(e) => {
                                             e.stopPropagation();

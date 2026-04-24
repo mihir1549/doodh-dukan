@@ -25,7 +25,7 @@ function formatDate(d: string) {
 
 function formatMonthYear(my: string) {
     const [y, m] = my.split('-');
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
     return `${months[parseInt(m, 10) - 1]} ${y}`;
 }
 

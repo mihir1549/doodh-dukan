@@ -11,12 +11,12 @@ import SuperAdminDashboard from './SuperAdminDashboard';
 type MenuColor = 'blue' | 'cyan' | 'amber' | 'green' | 'red' | 'slate';
 
 const COLOR_MAP: Record<MenuColor, { bg: string; fg: string }> = {
-    blue:  { bg: 'rgba(59, 130, 246, 0.15)',  fg: '#3b82f6' },
-    cyan:  { bg: 'rgba(6, 182, 212, 0.15)',   fg: '#06b6d4' },
-    amber: { bg: 'rgba(245, 158, 11, 0.15)',  fg: '#f59e0b' },
-    green: { bg: 'rgba(16, 185, 129, 0.15)',  fg: '#10b981' },
-    red:   { bg: 'rgba(239, 68, 68, 0.15)',   fg: '#ef4444' },
-    slate: { bg: 'rgba(148, 163, 184, 0.12)', fg: '#94a3b8' },
+    blue:  { bg: 'rgba(59, 130, 246, 0.22)',  fg: '#60a5fa' },
+    cyan:  { bg: 'rgba(6, 182, 212, 0.22)',   fg: '#22d3ee' },
+    amber: { bg: 'rgba(245, 158, 11, 0.22)',  fg: '#fbbf24' },
+    green: { bg: 'rgba(16, 185, 129, 0.22)',  fg: '#34d399' },
+    red:   { bg: 'rgba(239, 68, 68, 0.22)',   fg: '#f87171' },
+    slate: { bg: 'rgba(148, 163, 184, 0.18)', fg: '#cbd5e1' },
 };
 
 interface MenuCardProps {
@@ -152,7 +152,12 @@ function ShopDashboard() {
                 : 0;
             setMonthTotal(total);
 
-            setPendingApprovals(Number(pendingRes?.data?.data?.count ?? 0));
+            // Response interceptor wraps as { success, data: { count } } but tolerate other shapes
+            const countRaw =
+                pendingRes?.data?.data?.count ??
+                pendingRes?.data?.count ??
+                0;
+            setPendingApprovals(Number(countRaw) || 0);
         } catch (error) {
             console.error('Dashboard load failed:', error);
         } finally {

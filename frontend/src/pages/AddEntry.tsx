@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { customerApi, productApi, entryApi } from '../api';
 import { useAuth } from '../AuthContext';
-import { avatarColor, avatarLetter } from '../utils/avatar';
+import { avatarColor, avatarLetter, formatAddress } from '../utils/avatar';
 
 const SCROLL_CONTAINER_ID = 'customer-list-scroll-container';
 
@@ -372,8 +372,7 @@ export default function AddEntry() {
                             {filteredCustomers.map((c) => {
                                 const color = avatarColor(c.name);
                                 const letter = avatarLetter(c.name);
-                                const address = (c.address || '').trim();
-                                const shortAddress = address.length > 30 ? address.slice(0, 30) + '…' : address;
+                                const shortAddress = formatAddress(c.address, 30);
                                 return (
                                     <div
                                         key={c.id}

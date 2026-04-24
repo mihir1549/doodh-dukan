@@ -93,7 +93,7 @@ export default function Login() {
                         className="login-phone-input"
                         value={phone}
                         readOnly
-                        placeholder="0000000000"
+                        placeholder="Enter phone number"
                         style={{ marginBottom: 16 }}
                     />
                 </div>

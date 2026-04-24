@@ -97,7 +97,7 @@ export default function PendingPayments() {
                     <ChevronLeft size={16} strokeWidth={2} />
                     Home
                 </button>
-                <h1>Pending</h1>
+                <h1>Pending Payments</h1>
                 <div style={{ width: 72 }} />
             </div>
 

@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../AuthContext';
 import { entryApi } from '../api';
-import { avatarColor, avatarLetter } from '../utils/avatar';
+import { avatarColor, avatarLetter, formatAddress } from '../utils/avatar';
 
 export default function TodayEntries() {
     const navigate = useNavigate();
@@ -153,8 +153,7 @@ export default function TodayEntries() {
                         (s: number, e: any) => s + Number(e.line_total || 0),
                         0,
                     );
-                    const address = (c?.address || '').trim();
-                    const shortAddress = address.length > 34 ? address.slice(0, 34) + '…' : address;
+                    const shortAddress = formatAddress(c?.address, 34);
 
                     return (
                         <div

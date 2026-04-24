@@ -25,7 +25,7 @@ function formatLedgerDate(d: string) {
 
 function formatMonthYear(my: string) {
     const [y, m] = my.split('-');
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
     return `${months[parseInt(m, 10) - 1]} ${y}`;
 }
 
@@ -270,10 +270,7 @@ export default function MilkCard() {
                                 ₹{Number(summary?.total_amount ?? 0).toFixed(2)}
                             </div>
                         </div>
-                        <div
-                            className="stat-card"
-                            style={{ borderLeftColor: summary?.is_locked ? 'var(--success)' : 'var(--warning)' }}
-                        >
+                        <div className="stat-card">
                             <div
                                 style={{
                                     fontSize: '0.72rem',
@@ -286,7 +283,7 @@ export default function MilkCard() {
                                 Status
                             </div>
                             <div style={{ marginTop: 6 }}>
-                                <span className={summary?.is_locked ? 'badge badge-success' : 'badge badge-warning'}>
+                                <span className={summary?.is_locked ? 'badge badge-muted' : 'badge badge-success'}>
                                     {summary?.is_locked ? (
                                         <>
                                             <Lock size={10} strokeWidth={2} /> Locked
