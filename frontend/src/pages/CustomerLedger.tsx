@@ -96,7 +96,7 @@ export default function CustomerLedger() {
             <div className="page-header">
                 <button
                     className="back-btn"
-                    onClick={() => navigate(`/customers/${customerId}`)}
+                    onClick={() => navigate(-1)}
                 >
                     <ChevronLeft size={16} strokeWidth={2} />
                     Back
