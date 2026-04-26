@@ -2,6 +2,7 @@ import { useState } from 'react';
 import {
     X, Banknote, Smartphone, CreditCard, CheckCircle2,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { ledgerApi } from '../api';
 
 interface Props {
@@ -47,9 +48,12 @@ export default function RecordPaymentModal({ customerId, onSuccess, onClose }: P
                 transaction_date: date,
                 note: note.trim() || undefined,
             });
+            toast.success('Payment submitted — awaiting approval');
             setDone(true);
         } catch (err: any) {
-            setError(err.response?.data?.message || 'Failed to record payment');
+            const msg = err.response?.data?.message || 'Failed to record payment';
+            setError(msg);
+            toast.error(msg);
         } finally {
             setSaving(false);
         }

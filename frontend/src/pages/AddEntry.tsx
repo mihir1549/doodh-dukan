@@ -6,6 +6,7 @@ import {
     CheckCircle2, ArrowRight, Delete, Droplets, Package,
     AlertTriangle, Save, X, Users, Calendar, Pencil,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { customerApi, productApi, entryApi } from '../api';
 import { useAuth } from '../AuthContext';
 import { formatAddress, idBadgeFontSize } from '../utils/avatar';
@@ -107,7 +108,7 @@ export default function AddEntry() {
                 setTimeout(() => setShowSaveToast(false), 2000);
             })
             .catch(() => {
-                setError('Failed to save order to server');
+                toast.error('Failed to save order to server');
             });
     };
 
@@ -131,9 +132,10 @@ export default function AddEntry() {
         if (window.confirm('Restore default customer ordering?')) {
             try {
                 await customerApi.saveSequence([]);
+                toast.success('Customer order reset');
                 setTimeout(() => loadAllCustomers(), 300);
             } catch {
-                setError('Failed to reset order');
+                toast.error('Failed to reset order');
             }
         }
     };

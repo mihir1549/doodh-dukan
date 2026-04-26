@@ -4,6 +4,7 @@ import {
     ChevronLeft, ChevronRight, Pencil, Package, Calendar,
     Lock, Unlock, X, CheckCircle2, Wallet, TrendingUp, BookOpen,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { customerApi, summaryApi, entryApi } from '../api';
 import { idBadgeFontSize } from '../utils/avatar';
 
@@ -82,13 +83,19 @@ export default function CustomerDetail() {
             if (num) payload.customer_number = Number(num);
 
             await customerApi.update(id!, payload);
+            toast.success('Customer details updated');
             setIsEditing(false);
             loadData();
         } catch (err: any) {
             if (err.response?.status === 409) {
-                setEditError('Customer number already taken. Please use a different number.');
+                setEditError(
+                    err.response?.data?.message ||
+                    'This value is already in use. Please try another.',
+                );
             } else {
-                setEditError(err.response?.data?.message || 'Failed to update customer details');
+                const msg = err.response?.data?.message || 'Failed to update customer details';
+                setEditError(msg);
+                toast.error(msg);
             }
         } finally {
             setSaving(false);

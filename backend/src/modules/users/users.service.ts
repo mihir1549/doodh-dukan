@@ -73,6 +73,13 @@ export class UsersService implements OnModuleInit {
         });
     }
 
+    /** Find a user by phone across ALL tenants and roles. Used to prevent
+     *  cross-tenant phone collisions when creating/updating customers. */
+    async findByPhone(phone: string): Promise<User | null> {
+        if (!phone) return null;
+        return this.userRepo.findOne({ where: { phone } });
+    }
+
     async create(tenantId: string, dto: CreateUserDto) {
         // Cannot create OWNER via this endpoint
         if (dto.role === UserRole.OWNER) {

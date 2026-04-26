@@ -4,6 +4,7 @@ import {
     ChevronLeft, ChevronRight as ChevronRightIcon, Search, RefreshCw,
     Lock, Unlock, TrendingUp, BarChart3,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { useAuth } from '../AuthContext';
 import { summaryApi } from '../api';
 import { idBadgeFontSize } from '../utils/avatar';
@@ -51,23 +52,25 @@ export default function MonthlySummary() {
         setYear(y);
     };
 
-    const handleLock = async (id: string) => {
+    const handleLock = async (id: string, name?: string) => {
         if (!window.confirm('Lock this month? No more changes will be allowed.')) return;
         try {
             await summaryApi.lock(id);
+            toast.success(name ? `Card locked for ${name}` : 'Card locked');
             loadSummaries();
         } catch (err: any) {
-            alert(err.response?.data?.message || 'Failed to lock');
+            toast.error(err.response?.data?.message || 'Failed to lock');
         }
     };
 
-    const handleUnlock = async (id: string) => {
+    const handleUnlock = async (id: string, name?: string) => {
         if (!window.confirm('Unlock this month? Changes will be allowed again.')) return;
         try {
             await summaryApi.unlock(id);
+            toast.success(name ? `Card unlocked for ${name}` : 'Card unlocked');
             loadSummaries();
         } catch (err: any) {
-            alert(err.response?.data?.message || 'Failed to unlock');
+            toast.error(err.response?.data?.message || 'Failed to unlock');
         }
     };
 
@@ -76,6 +79,9 @@ export default function MonthlySummary() {
         try {
             await summaryApi.recalculate(monthYear);
             await loadSummaries();
+            toast.success('All summaries recalculated');
+        } catch (err: any) {
+            toast.error(err.response?.data?.message || 'Failed to recalculate');
         } finally {
             setRecalculating(false);
         }
@@ -337,7 +343,7 @@ export default function MonthlySummary() {
                                         }}
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            s.is_locked ? handleUnlock(s.id) : handleLock(s.id);
+                                            s.is_locked ? handleUnlock(s.id, s.customer_name) : handleLock(s.id, s.customer_name);
                                         }}
                                     >
                                         {s.is_locked ? (

@@ -4,6 +4,7 @@ import {
     ChevronLeft, Check, X, Banknote, Smartphone, CreditCard,
     CheckCircle2, AlertCircle,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { ledgerApi } from '../api';
 import { idBadgeFontSize } from '../utils/avatar';
 import { useAuth } from '../AuthContext';
@@ -69,9 +70,10 @@ export default function PendingPayments() {
         setProcessing(id);
         try {
             await ledgerApi.approvePayment(id);
+            toast.success('Payment approved — balance updated');
             setPayments((prev) => prev.filter((p) => p.id !== id));
         } catch (err: any) {
-            alert(err.response?.data?.message || 'Failed to approve');
+            toast.error(err.response?.data?.message || 'Failed to approve');
         } finally {
             setProcessing(null);
         }
@@ -82,11 +84,12 @@ export default function PendingPayments() {
         setProcessing(rejectId);
         try {
             await ledgerApi.rejectPayment(rejectId, rejectReason);
+            toast.success('Payment rejected');
             setPayments((prev) => prev.filter((p) => p.id !== rejectId));
             setRejectId(null);
             setRejectReason('');
         } catch (err: any) {
-            alert(err.response?.data?.message || 'Failed to reject');
+            toast.error(err.response?.data?.message || 'Failed to reject');
         } finally {
             setProcessing(null);
         }

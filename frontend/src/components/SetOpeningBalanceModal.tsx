@@ -2,6 +2,7 @@ import { useState } from 'react';
 import {
     X, CheckCircle2, ArrowUpRight, ArrowDownLeft, Wallet,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { ledgerApi } from '../api';
 
 interface Props {
@@ -72,9 +73,12 @@ export default function SetOpeningBalanceModal({ customerId, customerName, onSuc
                 as_of_date: date,
                 note: note.trim() || undefined,
             });
+            toast.success('Opening balance saved');
             onSuccess();
         } catch (err: any) {
-            setError(err.response?.data?.message || 'Failed to set opening balance');
+            const msg = err.response?.data?.message || 'Failed to set opening balance';
+            setError(msg);
+            toast.error(msg);
         } finally {
             setSaving(false);
         }

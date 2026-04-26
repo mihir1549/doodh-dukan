@@ -4,6 +4,7 @@ import {
     ChevronLeft, Plus, Trash2, Calendar, Wallet,
     ClipboardList,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { useAuth } from '../AuthContext';
 import { entryApi } from '../api';
 import { formatAddress, idBadgeFontSize } from '../utils/avatar';
@@ -38,9 +39,10 @@ export default function TodayEntries() {
         if (!window.confirm('Delete this entry?')) return;
         try {
             await entryApi.delete(id);
+            toast.success('Entry deleted');
             loadEntries();
         } catch (err: any) {
-            alert(err.response?.data?.message || 'Failed to delete');
+            toast.error(err.response?.data?.message || 'Failed to delete');
         }
     };
 

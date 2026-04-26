@@ -4,6 +4,7 @@ import {
     ChevronLeft, ChevronRight, Search, Plus, X, Wallet,
     BookOpen, Users, CheckCircle2,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { customerApi, ledgerApi } from '../api';
 import { useAuth } from '../AuthContext';
 import { formatAddress, idBadgeFontSize } from '../utils/avatar';
@@ -121,15 +122,22 @@ export default function Customers() {
             if (num) payload.customer_number = Number(num);
 
             await customerApi.create(payload);
+            toast.success('Customer added successfully');
             setFormData({ name: '', phone: '', address: '', notes: '', customer_number: '' });
             setShowForm(false);
             setPage(1);
             loadCustomers(search, 1);
         } catch (err: any) {
             if (err.response?.status === 409) {
-                setFormError('Customer number already taken. Please use a different number.');
+                // Surface backend's specific message (phone or customer_number conflict)
+                setFormError(
+                    err.response?.data?.message ||
+                    'This value is already in use. Please try another.',
+                );
             } else {
-                setFormError(err.response?.data?.message || 'Failed to save');
+                const msg = err.response?.data?.message || 'Failed to save';
+                setFormError(msg);
+                toast.error(msg);
             }
         } finally {
             setSaving(false);

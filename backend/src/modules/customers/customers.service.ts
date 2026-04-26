@@ -112,7 +112,45 @@ export class CustomersService implements OnModuleInit {
         }
     }
 
+    /** Phone numbers must be unique within the tenant's customers AND
+     *  unique across the entire users table (since customers get auto-linked
+     *  user accounts on the same phone). */
+    private async assertPhoneUnique(
+        tenantId: string,
+        phone: string | undefined | null,
+        excludeId?: string,
+    ) {
+        const trimmed = phone?.trim();
+        if (!trimmed) return;
+
+        // 1) Same-tenant active customer with this phone
+        const customerWhere: any = {
+            tenant_id: tenantId,
+            phone: trimmed,
+            is_active: true,
+        };
+        if (excludeId) customerWhere.id = Not(excludeId);
+        const existingCustomer = await this.customerRepo.findOne({ where: customerWhere });
+        if (existingCustomer) {
+            throw new ConflictException(
+                'This phone number is already registered to another customer',
+            );
+        }
+
+        // 2) Any user (any tenant, any role) on this phone — except the
+        //    user that's already linked to the customer being updated
+        const existingUser = await this.usersService.findByPhone(trimmed);
+        if (existingUser && (!excludeId || existingUser.customer_id !== excludeId)) {
+            throw new ConflictException(
+                'This phone number is already in use by an existing user account. Please use a different number.',
+            );
+        }
+    }
+
     async create(tenantId: string, dto: CreateCustomerDto) {
+        // Phone uniqueness across customers + users table
+        await this.assertPhoneUnique(tenantId, dto.phone);
+
         let customerNumber = dto.customer_number;
 
         if (customerNumber) {
@@ -150,6 +188,14 @@ export class CustomersService implements OnModuleInit {
             dto.customer_number !== customer.customer_number
         ) {
             await this.assertCustomerNumberUnique(tenantId, dto.customer_number, id);
+        }
+
+        // Only re-validate phone if it actually changed
+        if (
+            dto.phone !== undefined &&
+            (dto.phone || '').trim() !== (customer.phone || '').trim()
+        ) {
+            await this.assertPhoneUnique(tenantId, dto.phone, id);
         }
 
         Object.assign(customer, dto);

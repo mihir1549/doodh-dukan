@@ -4,6 +4,7 @@ import {
     ChevronLeft, Package, Users as UsersIcon, Plus, X,
     CheckCircle2, Droplets, UserX, Trash2, Pencil,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { productApi, userApi } from '../api';
 
 export default function Settings() {
@@ -49,11 +50,12 @@ export default function Settings() {
                 ...productForm,
                 initial_price: Number(productForm.initial_price),
             });
+            toast.success('Product saved');
             setShowProductForm(false);
             setProductForm({ name: '', category: 'LOOSE_MILK', unit: 'litre', initial_price: 0 });
             loadData();
         } catch (err: any) {
-            alert(err.response?.data?.message || 'Failed');
+            toast.error(err.response?.data?.message || 'Failed to save product');
         }
     };
 
@@ -61,11 +63,12 @@ export default function Settings() {
         if (!newPrice) return;
         try {
             await productApi.setPrice(productId, { price_per_unit: Number(newPrice) });
+            toast.success('Price updated');
             setPriceProductId(null);
             setNewPrice(0);
             loadData();
         } catch (err: any) {
-            alert(err.response?.data?.message || 'Failed');
+            toast.error(err.response?.data?.message || 'Failed to update price');
         }
     };
 
@@ -73,11 +76,12 @@ export default function Settings() {
         if (!userForm.name || !userForm.phone || !userForm.pin) return;
         try {
             await userApi.create(userForm);
+            toast.success('Staff added');
             setShowUserForm(false);
             setUserForm({ name: '', phone: '', pin: '', role: 'DELIVERY' });
             loadData();
         } catch (err: any) {
-            alert(err.response?.data?.message || 'Failed');
+            toast.error(err.response?.data?.message || 'Failed to add staff');
         }
     };
 
@@ -484,8 +488,13 @@ export default function Settings() {
                                             <button
                                                 onClick={async () => {
                                                     if (window.confirm(`Deactivate ${u.name}?`)) {
-                                                        await userApi.deactivate(u.id);
-                                                        loadData();
+                                                        try {
+                                                            await userApi.deactivate(u.id);
+                                                            toast.success('Staff deactivated');
+                                                            loadData();
+                                                        } catch (err: any) {
+                                                            toast.error(err.response?.data?.message || 'Failed to deactivate');
+                                                        }
                                                     }
                                                 }}
                                                 style={{

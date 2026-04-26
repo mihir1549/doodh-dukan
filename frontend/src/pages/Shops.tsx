@@ -4,6 +4,7 @@ import {
     ChevronLeft, Search, Plus, Building2, Phone, Calendar,
     PowerOff, Power,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { tenantApi } from '../api';
 import type { Tenant } from '../api';
 
@@ -30,9 +31,12 @@ export default function Shops() {
     const handleToggleStatus = async (id: string) => {
         try {
             await tenantApi.toggleStatus(id);
-            setShops(shops.map((s) => (s.id === id ? { ...s, is_active: !s.is_active } : s)));
+            const updated = shops.map((s) => (s.id === id ? { ...s, is_active: !s.is_active } : s));
+            setShops(updated);
+            const shop = updated.find((s) => s.id === id);
+            toast.success(`${shop?.shop_name ?? 'Shop'} ${shop?.is_active ? 'activated' : 'deactivated'}`);
         } catch {
-            alert('Failed to update shop status');
+            toast.error('Failed to update shop status');
         }
     };
 
