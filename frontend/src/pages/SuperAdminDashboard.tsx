@@ -1,11 +1,11 @@
 import { useState, useEffect, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-    Building2, UserPlus, CheckCircle, LogOut, Shield,
+    Building2, UserPlus, LogOut, Shield,
     ChevronRight, TrendingUp, Power,
 } from 'lucide-react';
 import { useAuth } from '../AuthContext';
-import { tenantApi, ledgerApi } from '../api';
+import { tenantApi } from '../api';
 
 type MenuColor = 'blue' | 'cyan' | 'amber' | 'green' | 'red' | 'slate';
 
@@ -120,23 +120,18 @@ export default function SuperAdminDashboard() {
     const { logout } = useAuth();
     const navigate = useNavigate();
     const [stats, setStats] = useState({ total: 0, active: 0 });
-    const [pendingApprovals, setPendingApprovals] = useState(0);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => { loadStats(); }, []);
 
     const loadStats = async () => {
         try {
-            const [tenantsRes, pendingRes] = await Promise.all([
-                tenantApi.list(),
-                ledgerApi.getPendingCount().catch(() => ({ data: { data: { count: 0 } } })),
-            ]);
+            const tenantsRes = await tenantApi.list();
             const shops = tenantsRes.data.data || [];
             setStats({
                 total: shops.length,
                 active: shops.filter((s: any) => s.is_active).length,
             });
-            setPendingApprovals(Number(pendingRes?.data?.data?.count ?? 0));
         } catch (error) {
             console.error('Failed to load platform stats:', error);
         } finally {
@@ -262,14 +257,6 @@ export default function SuperAdminDashboard() {
                     title="Register New Shop"
                     subtitle="Direct link to shop creation portal"
                     onClick={() => navigate('/portal/registration')}
-                />
-                <MenuCard
-                    icon={<CheckCircle size={20} strokeWidth={2} />}
-                    color="red"
-                    title="Pending Approvals"
-                    subtitle="Approve customer payments"
-                    onClick={() => navigate('/admin/pending-payments')}
-                    badge={pendingApprovals}
                 />
                 <MenuCard
                     icon={<Power size={20} strokeWidth={2} />}

@@ -321,6 +321,7 @@ export default function Settings() {
                                                         fontWeight: 600,
                                                         marginTop: 2,
                                                         padding: 0,
+                                                        minHeight: 'auto',
                                                     }}
                                                     onClick={() =>
                                                         setPriceProductId(priceProductId === p.id ? null : p.id)
@@ -491,12 +492,16 @@ export default function Settings() {
                                                     background: 'var(--danger-bg)',
                                                     border: 'none',
                                                     color: 'var(--danger)',
-                                                    padding: 6,
+                                                    width: 36,
+                                                    height: 36,
+                                                    minHeight: 36,
+                                                    padding: 0,
                                                     borderRadius: 'var(--radius-sm)',
                                                     cursor: 'pointer',
                                                     display: 'flex',
                                                     alignItems: 'center',
                                                     justifyContent: 'center',
+                                                    flexShrink: 0,
                                                 }}
                                                 aria-label="Deactivate"
                                                 title="Deactivate"

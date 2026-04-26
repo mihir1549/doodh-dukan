@@ -103,11 +103,26 @@
   padding: 0;
 }
 
-body {
+html, body {
   min-height: 100vh;
   background: var(--bg-base);
   font-family: var(--font-body);
   color: var(--text-primary);
+  overflow-x: hidden;
+  width: 100%;
+}
+
+/* Touch targets — interactive controls must be at least 44x44 */
+button {
+  min-height: 44px;
+}
+.icon-btn {
+  min-height: 36px;
+  min-width: 36px;
+}
+.numpad-btn {
+  /* numpad already sets explicit height; keep as-is */
+  min-height: 0;
 }
 
 h1, h2, h3, h4, h5, h6 {

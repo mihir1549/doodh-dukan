@@ -101,8 +101,9 @@ export class LedgerController {
         return { has_opening_balance: has };
     }
 
+    // Shop-level customer financial data — SUPER_ADMIN explicitly excluded
     @Get('pending-payments')
-    @Roles(UserRole.OWNER, UserRole.SUPER_ADMIN)
+    @Roles(UserRole.OWNER, UserRole.SHOP_STAFF)
     async getPendingPayments(@TenantId() tenantId: string) {
         const payments = await this.ledgerService.getPendingPayments(tenantId);
         return payments.map((e) => ({
@@ -120,7 +121,7 @@ export class LedgerController {
     }
 
     @Get('pending-payments/count')
-    @Roles(UserRole.OWNER, UserRole.SHOP_STAFF, UserRole.DELIVERY, UserRole.CUSTOMER, UserRole.SUPER_ADMIN)
+    @Roles(UserRole.OWNER, UserRole.SHOP_STAFF)
     async getPendingCount(@TenantId() tenantId: string) {
         const count = await this.ledgerService.getPendingPaymentsCount(tenantId);
         return { count };

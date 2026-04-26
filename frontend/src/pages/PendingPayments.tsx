@@ -41,10 +41,12 @@ export default function PendingPayments() {
     const [rejectReason, setRejectReason] = useState('');
     const [processing, setProcessing] = useState<string | null>(null);
 
-    const isAdmin = ['OWNER', 'SUPER_ADMIN'].includes(user?.role?.toUpperCase() ?? '');
+    const role = user?.role?.toUpperCase() ?? '';
+    const canView = role === 'OWNER' || role === 'SHOP_STAFF';
+    const canApprove = role === 'OWNER';
 
     useEffect(() => {
-        if (!isAdmin) {
+        if (!canView) {
             navigate('/');
             return;
         }
@@ -148,6 +150,9 @@ export default function PendingPayments() {
                                             fontWeight: 600,
                                             fontSize: '0.98rem',
                                             color: 'var(--text-primary)',
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            whiteSpace: 'nowrap',
                                         }}
                                     >
                                         {p.customer_name}
@@ -211,38 +216,50 @@ export default function PendingPayments() {
                                 </div>
                             )}
 
-                            <div style={{ display: 'flex', gap: 8 }}>
-                                <button
-                                    className="btn btn-success"
-                                    style={{ flex: 1, minHeight: 40 }}
-                                    disabled={busy}
-                                    onClick={() => handleApprove(p.id)}
-                                >
-                                    {busy ? (
-                                        <div
-                                            className="spinner"
-                                            style={{ width: 14, height: 14, borderWidth: 2 }}
-                                        />
-                                    ) : (
-                                        <>
-                                            <Check size={16} strokeWidth={2.25} />
-                                            Approve
-                                        </>
-                                    )}
-                                </button>
-                                <button
-                                    className="btn btn-danger"
-                                    style={{ flex: 1, minHeight: 40 }}
-                                    disabled={busy}
-                                    onClick={() => {
-                                        setRejectId(p.id);
-                                        setRejectReason('');
+                            {canApprove ? (
+                                <div style={{ display: 'flex', gap: 8 }}>
+                                    <button
+                                        className="btn btn-success"
+                                        style={{ flex: 1, minHeight: 44 }}
+                                        disabled={busy}
+                                        onClick={() => handleApprove(p.id)}
+                                    >
+                                        {busy ? (
+                                            <div
+                                                className="spinner"
+                                                style={{ width: 14, height: 14, borderWidth: 2 }}
+                                            />
+                                        ) : (
+                                            <>
+                                                <Check size={16} strokeWidth={2.25} />
+                                                Approve
+                                            </>
+                                        )}
+                                    </button>
+                                    <button
+                                        className="btn btn-danger"
+                                        style={{ flex: 1, minHeight: 44 }}
+                                        disabled={busy}
+                                        onClick={() => {
+                                            setRejectId(p.id);
+                                            setRejectReason('');
+                                        }}
+                                    >
+                                        <X size={16} strokeWidth={2.25} />
+                                        Reject
+                                    </button>
+                                </div>
+                            ) : (
+                                <div
+                                    style={{
+                                        fontSize: '0.78rem',
+                                        color: 'var(--text-muted)',
+                                        fontStyle: 'italic',
                                     }}
                                 >
-                                    <X size={16} strokeWidth={2.25} />
-                                    Reject
-                                </button>
-                            </div>
+                                    Owner approval required
+                                </div>
+                            )}
                         </div>
                     );
                 })

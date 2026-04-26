@@ -18,8 +18,9 @@ export default function CustomerDetail() {
     const [loading, setLoading] = useState(true);
 
     const [isEditing, setIsEditing] = useState(false);
-    const [editForm, setEditForm] = useState({ name: '', phone: '', address: '' });
+    const [editForm, setEditForm] = useState({ name: '', phone: '', address: '', customer_number: '' });
     const [saving, setSaving] = useState(false);
+    const [editError, setEditError] = useState('');
 
     const now = new Date();
     const initialMonth = searchParams.get('month') || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -50,6 +51,7 @@ export default function CustomerDetail() {
                 name: custRes.data?.data?.name || '',
                 phone: custRes.data?.data?.phone || '',
                 address: custRes.data?.data?.address || '',
+                customer_number: String(custRes.data?.data?.customer_number ?? ''),
             });
         } catch {
             setCustomer(null);
@@ -69,13 +71,25 @@ export default function CustomerDetail() {
     const handleEditSave = async (e: { preventDefault: () => void }) => {
         e.preventDefault();
         setSaving(true);
+        setEditError('');
         try {
-            await customerApi.update(id!, editForm);
+            const payload: any = {
+                name: editForm.name,
+                phone: editForm.phone || undefined,
+                address: editForm.address || undefined,
+            };
+            const num = editForm.customer_number.trim();
+            if (num) payload.customer_number = Number(num);
+
+            await customerApi.update(id!, payload);
             setIsEditing(false);
             loadData();
-        } catch (err) {
-            console.error('Failed to update customer', err);
-            alert('Failed to update customer details');
+        } catch (err: any) {
+            if (err.response?.status === 409) {
+                setEditError('Customer number already taken. Please use a different number.');
+            } else {
+                setEditError(err.response?.data?.message || 'Failed to update customer details');
+            }
         } finally {
             setSaving(false);
         }
@@ -184,6 +198,9 @@ export default function CustomerDetail() {
                                 fontWeight: 700,
                                 fontSize: '1.1rem',
                                 color: 'var(--text-primary)',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
                             }}
                         >
                             {customer.name}
@@ -439,10 +456,15 @@ export default function CustomerDetail() {
                             .join(', ');
 
                         const lastEntry = dayEntries[dayEntries.length - 1];
-                        const byName =
+                        const rawBy =
                             hasEntries && (lastEntry?.created_by_user?.name || lastEntry?.entered_by_user?.name)
                                 ? (lastEntry.created_by_user?.name || lastEntry.entered_by_user?.name).split(' ')[0]
-                                : '—';
+                                : '';
+                        const byName = !rawBy
+                            ? '—'
+                            : rawBy.length > 8
+                                ? rawBy.slice(0, 8) + '…'
+                                : rawBy;
 
                         return (
                             <div
@@ -544,6 +566,22 @@ export default function CustomerDetail() {
                                 />
                             </div>
                             <div className="form-group">
+                                <label>Customer Number</label>
+                                <input
+                                    type="number"
+                                    inputMode="numeric"
+                                    min="1"
+                                    value={editForm.customer_number}
+                                    onChange={(e) =>
+                                        setEditForm({
+                                            ...editForm,
+                                            customer_number: e.target.value.replace(/\D/g, ''),
+                                        })
+                                    }
+                                    style={{ fontFamily: 'var(--font-mono)' }}
+                                />
+                            </div>
+                            <div className="form-group">
                                 <label>Mobile No.</label>
                                 <input
                                     type="tel"
@@ -561,6 +599,9 @@ export default function CustomerDetail() {
                                     rows={2}
                                 />
                             </div>
+
+                            {editError && <div className="error-msg">{editError}</div>}
+
                             <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
                                 <button
                                     type="button"

@@ -174,6 +174,9 @@ export default function TodayEntries() {
                                             fontWeight: 600,
                                             fontSize: '0.98rem',
                                             color: 'var(--text-primary)',
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            whiteSpace: 'nowrap',
                                         }}
                                     >
                                         {c?.name || 'Unknown'}
@@ -285,15 +288,19 @@ export default function TodayEntries() {
                                                         background: 'var(--danger-bg)',
                                                         border: 'none',
                                                         color: 'var(--danger)',
-                                                        padding: 6,
+                                                        width: 44,
+                                                        height: 44,
+                                                        minHeight: 44,
+                                                        padding: 0,
                                                         borderRadius: 'var(--radius-sm)',
                                                         cursor: 'pointer',
                                                         display: 'flex',
                                                         alignItems: 'center',
                                                         justifyContent: 'center',
+                                                        flexShrink: 0,
                                                     }}
                                                 >
-                                                    <Trash2 size={15} strokeWidth={1.75} />
+                                                    <Trash2 size={16} strokeWidth={1.75} />
                                                 </button>
                                             )}
                                         </div>

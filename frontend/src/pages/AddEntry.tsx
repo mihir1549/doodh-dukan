@@ -305,6 +305,7 @@ export default function AddEntry() {
                                         fontSize: '0.78rem',
                                         cursor: 'pointer',
                                         fontWeight: 600,
+                                        minHeight: 'auto',
                                     }}
                                 >
                                     <Save size={12} />
@@ -323,6 +324,7 @@ export default function AddEntry() {
                                     fontSize: '0.78rem',
                                     cursor: 'pointer',
                                     fontWeight: 600,
+                                    minHeight: 'auto',
                                 }}
                             >
                                 <RotateCcw size={12} />

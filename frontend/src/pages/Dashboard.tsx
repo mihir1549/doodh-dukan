@@ -120,8 +120,11 @@ function ShopDashboard() {
     const [pendingApprovals, setPendingApprovals] = useState(0);
     const [loading, setLoading] = useState(true);
 
-    const isAdmin = user?.role === 'OWNER' || user?.role?.toUpperCase() === 'SUPER_ADMIN';
-    const isDelivery = user?.role === 'DELIVERY';
+    const role = user?.role?.toUpperCase();
+    const isOwner = role === 'OWNER';
+    const isDelivery = role === 'DELIVERY';
+    // Pending Approvals: OWNER + SHOP_STAFF can see (matches backend role grant)
+    const canSeePending = isOwner || role === 'SHOP_STAFF';
 
     const today = new Date().toISOString().split('T')[0];
     const currentMonth = today.substring(0, 7);
@@ -138,7 +141,7 @@ function ShopDashboard() {
                 !isDelivery
                     ? summaryApi.list(currentMonth).catch(() => ({ data: { data: [] } }))
                     : Promise.resolve({ data: { data: [] } }),
-                isAdmin
+                canSeePending
                     ? ledgerApi.getPendingCount().catch(() => ({ data: { data: { count: 0 } } }))
                     : Promise.resolve({ data: { data: { count: 0 } } }),
             ]);
@@ -264,17 +267,17 @@ function ShopDashboard() {
                         />
                     </>
                 )}
-                {isAdmin && (
+                {canSeePending && (
                     <MenuCard
                         icon={<CheckCircle size={20} strokeWidth={2} />}
                         color="red"
                         title="Pending Approvals"
-                        subtitle="Approve customer payments"
+                        subtitle={isOwner ? 'Approve customer payments' : 'View pending payments'}
                         onClick={() => navigate('/admin/pending-payments')}
                         badge={pendingApprovals}
                     />
                 )}
-                {user?.role === 'OWNER' && (
+                {isOwner && (
                     <MenuCard
                         icon={<SettingsIcon size={20} strokeWidth={2} />}
                         color="slate"

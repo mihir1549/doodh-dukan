@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
+import { Injectable, NotFoundException, OnModuleInit, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, ILike, Brackets } from 'typeorm';
+import { Repository, ILike, Brackets, Not } from 'typeorm';
 import { Customer } from './customer.entity';
 import { CreateCustomerDto, UpdateCustomerDto } from './dto/customer.dto';
 import { UsersService } from '../users/users.service';
@@ -97,20 +97,42 @@ export class CustomersService implements OnModuleInit {
         });
     }
 
+    private async assertCustomerNumberUnique(
+        tenantId: string,
+        customerNumber: number,
+        excludeId?: string,
+    ) {
+        const where: any = { tenant_id: tenantId, customer_number: customerNumber };
+        if (excludeId) where.id = Not(excludeId);
+        const existing = await this.customerRepo.findOne({ where });
+        if (existing) {
+            throw new ConflictException(
+                `Customer number ${customerNumber} already exists in this shop`,
+            );
+        }
+    }
+
     async create(tenantId: string, dto: CreateCustomerDto) {
-        // Auto-generate next customer_number for this tenant
-        const result = await this.customerRepo
-            .createQueryBuilder('c')
-            .select('MAX(c.customer_number)', 'max')
-            .where('c.tenant_id = :tenantId', { tenantId })
-            .getRawOne();
+        let customerNumber = dto.customer_number;
 
-        const nextNumber = (result?.max || 0) + 1;
+        if (customerNumber) {
+            // Explicit number from caller — must be unique
+            await this.assertCustomerNumberUnique(tenantId, customerNumber);
+        } else {
+            // Auto-generate next customer_number for this tenant
+            const result = await this.customerRepo
+                .createQueryBuilder('c')
+                .select('MAX(c.customer_number)', 'max')
+                .where('c.tenant_id = :tenantId', { tenantId })
+                .getRawOne();
+            customerNumber = (result?.max || 0) + 1;
+        }
 
+        const { customer_number: _drop, ...rest } = dto;
         const customer = this.customerRepo.create({
             tenant_id: tenantId,
-            customer_number: nextNumber,
-            ...dto,
+            customer_number: customerNumber,
+            ...rest,
         });
         const savedCustomer = await this.customerRepo.save(customer);
 
@@ -122,6 +144,14 @@ export class CustomersService implements OnModuleInit {
 
     async update(tenantId: string, id: string, dto: UpdateCustomerDto) {
         const customer = await this.findOne(tenantId, id);
+
+        if (
+            dto.customer_number !== undefined &&
+            dto.customer_number !== customer.customer_number
+        ) {
+            await this.assertCustomerNumberUnique(tenantId, dto.customer_number, id);
+        }
+
         Object.assign(customer, dto);
         const savedCustomer = await this.customerRepo.save(customer);
 

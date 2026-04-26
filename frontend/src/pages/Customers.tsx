@@ -27,8 +27,9 @@ export default function Customers() {
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const [showForm, setShowForm] = useState(false);
-    const [formData, setFormData] = useState({ name: '', phone: '', address: '', notes: '' });
+    const [formData, setFormData] = useState({ name: '', phone: '', address: '', notes: '', customer_number: '' });
     const [saving, setSaving] = useState(false);
+    const [formError, setFormError] = useState('');
     const [openingBalanceFor, setOpeningBalanceFor] = useState<{ id: string; name: string } | null>(null);
 
     useEffect(() => {
@@ -108,14 +109,28 @@ export default function Customers() {
     const handleSave = async () => {
         if (!formData.name.trim()) return;
         setSaving(true);
+        setFormError('');
         try {
-            await customerApi.create(formData);
-            setFormData({ name: '', phone: '', address: '', notes: '' });
+            const payload: any = {
+                name: formData.name.trim(),
+                phone: formData.phone.trim() || undefined,
+                address: formData.address.trim() || undefined,
+                notes: formData.notes?.trim() || undefined,
+            };
+            const num = formData.customer_number.trim();
+            if (num) payload.customer_number = Number(num);
+
+            await customerApi.create(payload);
+            setFormData({ name: '', phone: '', address: '', notes: '', customer_number: '' });
             setShowForm(false);
             setPage(1);
             loadCustomers(search, 1);
         } catch (err: any) {
-            alert(err.response?.data?.message || 'Failed to save');
+            if (err.response?.status === 409) {
+                setFormError('Customer number already taken. Please use a different number.');
+            } else {
+                setFormError(err.response?.data?.message || 'Failed to save');
+            }
         } finally {
             setSaving(false);
         }
@@ -189,6 +204,23 @@ export default function Customers() {
                         />
                     </div>
                     <div className="form-group">
+                        <label>Customer Number</label>
+                        <input
+                            type="number"
+                            inputMode="numeric"
+                            min="1"
+                            value={formData.customer_number}
+                            onChange={(e) =>
+                                setFormData({
+                                    ...formData,
+                                    customer_number: e.target.value.replace(/\D/g, ''),
+                                })
+                            }
+                            placeholder="Leave blank to auto-assign"
+                            style={{ fontFamily: 'var(--font-mono)' }}
+                        />
+                    </div>
+                    <div className="form-group">
                         <label>Phone</label>
                         <input
                             value={formData.phone}
@@ -204,6 +236,9 @@ export default function Customers() {
                             placeholder="Address"
                         />
                     </div>
+
+                    {formError && <div className="error-msg" style={{ marginBottom: 12 }}>{formError}</div>}
+
                     <button
                         className="btn btn-success btn-full"
                         onClick={handleSave}
@@ -281,6 +316,9 @@ export default function Customers() {
                                                 fontWeight: 600,
                                                 fontSize: '0.98rem',
                                                 color: 'var(--text-primary)',
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+                                                whiteSpace: 'nowrap',
                                             }}
                                         >
                                             {c.name}

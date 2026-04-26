@@ -36,6 +36,143 @@ function formatAmount(n: number) {
     })}`;
 }
 
+function LedgerRow({ entry: e }: { entry: any }) {
+    const isDebit = e.direction === 'DEBIT';
+    const isRejected = e.status === 'REJECTED';
+    const isPending = e.status === 'PENDING';
+    const label = ENTRY_LABELS[e.entry_type] ?? e.entry_type;
+
+    let desc: string;
+    let statusIcon: React.ReactNode = null;
+    if (e.entry_type === 'BILL_POSTED') {
+        desc = `Bill · ${e.reference_month ? formatMonthYear(e.reference_month) : ''}`;
+    } else if (e.entry_type === 'PAYMENT') {
+        desc = `Payment${e.payment_mode ? ` (${e.payment_mode})` : ''}`;
+        if (isPending) statusIcon = <Clock size={13} strokeWidth={2} style={{ color: 'var(--warning)', flexShrink: 0 }} />;
+        else if (isRejected) statusIcon = <XCircle size={13} strokeWidth={2} style={{ color: 'var(--danger)', flexShrink: 0 }} />;
+        else statusIcon = <CheckCircle2 size={13} strokeWidth={2} style={{ color: 'var(--success)', flexShrink: 0 }} />;
+    } else {
+        desc = label;
+    }
+
+    const sideColor = isPending
+        ? 'var(--warning)'
+        : isDebit
+            ? 'rgba(239,68,68,0.5)'
+            : 'rgba(16,185,129,0.5)';
+    const amountColor = isDebit ? 'var(--danger)' : 'var(--success)';
+
+    return (
+        <div
+            style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 6,
+                padding: '12px 14px',
+                background: isPending ? 'var(--warning-bg)' : 'var(--bg-surface)',
+                border: '1px solid var(--border-subtle)',
+                borderLeft: isRejected ? '1px solid var(--border-subtle)' : `3px solid ${sideColor}`,
+                borderRadius: 'var(--radius-md)',
+                opacity: isRejected ? 0.55 : 1,
+            }}
+        >
+            <div
+                style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start',
+                    gap: 10,
+                }}
+            >
+                <div
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        color: 'var(--text-primary)',
+                        fontWeight: 500,
+                        fontSize: '0.92rem',
+                        flex: 1,
+                        minWidth: 0,
+                    }}
+                >
+                    {statusIcon}
+                    <span style={{ wordBreak: 'break-word' }}>{desc}</span>
+                </div>
+                <span
+                    style={{
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: '0.78rem',
+                        color: 'var(--text-muted)',
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0,
+                    }}
+                >
+                    {formatDate(e.transaction_date)}
+                </span>
+            </div>
+
+            <div
+                style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: 10,
+                    flexWrap: 'wrap',
+                }}
+            >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    {isPending && <span className="badge badge-warning">Pending</span>}
+                    {isRejected && <span className="badge badge-muted">Rejected</span>}
+                </div>
+                <div
+                    style={{
+                        display: 'inline-flex',
+                        alignItems: 'baseline',
+                        gap: 8,
+                        marginLeft: 'auto',
+                    }}
+                >
+                    <span
+                        className="amount-medium"
+                        style={{
+                            color: amountColor,
+                            textDecoration: isRejected ? 'line-through' : 'none',
+                        }}
+                    >
+                        {formatAmount(e.amount)}
+                    </span>
+                    <span
+                        style={{
+                            fontFamily: 'var(--font-mono)',
+                            fontSize: '0.66rem',
+                            fontWeight: 700,
+                            letterSpacing: '0.05em',
+                            color: amountColor,
+                            textTransform: 'uppercase',
+                        }}
+                    >
+                        {isDebit ? 'Debit' : 'Credit'}
+                    </span>
+                </div>
+            </div>
+
+            {e.note && !isRejected && (
+                <div
+                    style={{
+                        fontSize: '0.78rem',
+                        color: 'var(--text-muted)',
+                        marginTop: 2,
+                        wordBreak: 'break-word',
+                    }}
+                >
+                    {e.note}
+                </div>
+            )}
+        </div>
+    );
+}
+
 export default function CustomerLedger() {
     const { id: customerId } = useParams<{ id: string }>();
     const navigate = useNavigate();
@@ -195,159 +332,28 @@ export default function CustomerLedger() {
                     <p style={{ marginTop: 8 }}>No ledger entries yet</p>
                 </div>
             ) : (
-                <div
-                    style={{
-                        background: 'var(--bg-surface)',
-                        border: '1px solid var(--border-subtle)',
-                        borderRadius: 'var(--radius-lg)',
-                        overflow: 'hidden',
-                    }}
-                >
-                    {/* Table header */}
-                    <div
-                        style={{
-                            display: 'grid',
-                            gridTemplateColumns: '62px 1fr 78px 78px',
-                            gap: 4,
-                            padding: '10px 14px',
-                            borderBottom: '1px solid var(--border-subtle)',
-                            background: 'var(--bg-elevated)',
-                            fontSize: '0.7rem',
-                            color: 'var(--text-muted)',
-                            fontWeight: 700,
-                            letterSpacing: '0.05em',
-                            textTransform: 'uppercase',
-                        }}
-                    >
-                        <span>Date</span>
-                        <span>Description</span>
-                        <span style={{ textAlign: 'right' }}>Debit</span>
-                        <span style={{ textAlign: 'right' }}>Credit</span>
-                    </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {entries.map((e) => (
+                        <LedgerRow key={e.id} entry={e} />
+                    ))}
 
-                    {entries.map((e, idx) => {
-                        const isDebit = e.direction === 'DEBIT';
-                        const isRejected = e.status === 'REJECTED';
-                        const isPending = e.status === 'PENDING';
-                        const label = ENTRY_LABELS[e.entry_type] ?? e.entry_type;
-
-                        let desc: string;
-                        let statusIcon: React.ReactNode = null;
-                        if (e.entry_type === 'BILL_POSTED') {
-                            desc = `Bill · ${e.reference_month ? formatMonthYear(e.reference_month) : ''}`;
-                        } else if (e.entry_type === 'PAYMENT') {
-                            desc = `Payment${e.payment_mode ? ` (${e.payment_mode})` : ''}`;
-                            if (isPending) statusIcon = <Clock size={12} strokeWidth={2} style={{ color: 'var(--warning)' }} />;
-                            else if (isRejected) statusIcon = <XCircle size={12} strokeWidth={2} style={{ color: 'var(--danger)' }} />;
-                            else statusIcon = <CheckCircle2 size={12} strokeWidth={2} style={{ color: 'var(--success)' }} />;
-                        } else {
-                            desc = label;
-                        }
-
-                        const isLast = idx === entries.length - 1;
-
-                        return (
-                            <div
-                                key={e.id}
-                                style={{
-                                    display: 'grid',
-                                    gridTemplateColumns: '62px 1fr 78px 78px',
-                                    gap: 4,
-                                    padding: '10px 14px',
-                                    borderBottom: isLast ? 'none' : '1px solid var(--border-subtle)',
-                                    borderLeft: isRejected
-                                        ? 'none'
-                                        : `3px solid ${isPending ? 'var(--warning)' : isDebit ? 'rgba(239,68,68,0.35)' : 'rgba(16,185,129,0.35)'}`,
-                                    background: isPending
-                                        ? 'var(--warning-bg)'
-                                        : isRejected
-                                            ? 'transparent'
-                                            : 'transparent',
-                                    opacity: isRejected ? 0.5 : 1,
-                                    textDecoration: isRejected ? 'line-through' : 'none',
-                                    fontSize: '0.85rem',
-                                    alignItems: 'center',
-                                }}
-                            >
-                                <span
-                                    style={{
-                                        fontFamily: 'var(--font-mono)',
-                                        color: 'var(--text-muted)',
-                                        fontSize: '0.72rem',
-                                    }}
-                                >
-                                    {formatDate(e.transaction_date)}
-                                </span>
-                                <div style={{ minWidth: 0 }}>
-                                    <div
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: 6,
-                                            color: 'var(--text-primary)',
-                                        }}
-                                    >
-                                        {statusIcon}
-                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{desc}</span>
-                                    </div>
-                                    {isPending && (
-                                        <span
-                                            className="badge badge-warning"
-                                            style={{ marginTop: 3 }}
-                                        >
-                                            Pending
-                                        </span>
-                                    )}
-                                    {e.note && !isRejected && (
-                                        <div
-                                            style={{
-                                                fontSize: '0.72rem',
-                                                color: 'var(--text-muted)',
-                                                marginTop: 2,
-                                            }}
-                                        >
-                                            {e.note}
-                                        </div>
-                                    )}
-                                </div>
-                                <span
-                                    style={{
-                                        textAlign: 'right',
-                                        fontFamily: 'var(--font-mono)',
-                                        color: 'var(--danger)',
-                                        fontWeight: isDebit ? 500 : 400,
-                                    }}
-                                >
-                                    {isDebit ? formatAmount(e.amount) : ''}
-                                </span>
-                                <span
-                                    style={{
-                                        textAlign: 'right',
-                                        fontFamily: 'var(--font-mono)',
-                                        color: 'var(--success)',
-                                        fontWeight: !isDebit ? 500 : 400,
-                                    }}
-                                >
-                                    {!isDebit ? formatAmount(e.amount) : ''}
-                                </span>
-                            </div>
-                        );
-                    })}
-
-                    {/* Balance footer */}
+                    {/* Balance footer card */}
                     <div
                         style={{
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',
+                            gap: 8,
                             padding: '12px 14px',
-                            borderTop: '1px solid var(--border-default)',
                             background: 'var(--bg-elevated)',
+                            border: '1px solid var(--border-default)',
+                            borderRadius: 'var(--radius-md)',
+                            marginTop: 4,
                         }}
                     >
                         <span
                             style={{
-                                display: 'flex',
+                                display: 'inline-flex',
                                 alignItems: 'center',
                                 gap: 6,
                                 fontSize: '0.75rem',
@@ -360,7 +366,7 @@ export default function CustomerLedger() {
                             <Wallet size={13} strokeWidth={2} />
                             Balance
                         </span>
-                        <span className="amount-medium" style={{ color: balanceMeta.color }}>
+                        <span className="amount-medium" style={{ color: balanceMeta.color, whiteSpace: 'nowrap' }}>
                             {formatAmount(balance)}
                         </span>
                     </div>
