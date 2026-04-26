@@ -10,3 +10,5 @@ build_errors.txt
 backend/check_shop_data.js
 backend/delete_shop_data.js
 backend/search_tenant.js
+backend/check_duplicates.js
+backend/cleanup_duplicates.js

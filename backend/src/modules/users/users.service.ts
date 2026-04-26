@@ -74,10 +74,20 @@ export class UsersService implements OnModuleInit {
     }
 
     /** Find a user by phone across ALL tenants and roles. Used to prevent
-     *  cross-tenant phone collisions when creating/updating customers. */
+     *  cross-tenant phone collisions when creating/updating customers.
+     *  Normalises +91 / 91 prefixes and whitespace so 9876543210 matches
+     *  +919876543210 / 919876543210 / "98765 43210" etc. */
     async findByPhone(phone: string): Promise<User | null> {
         if (!phone) return null;
-        return this.userRepo.findOne({ where: { phone } });
+        const normalized = phone.replace(/[\s\-()]/g, '').replace(/^\+?91/, '').trim();
+        if (!normalized) return null;
+        return this.userRepo.findOne({
+            where: [
+                { phone: normalized },
+                { phone: '+91' + normalized },
+                { phone: '91' + normalized },
+            ],
+        });
     }
 
     async create(tenantId: string, dto: CreateUserDto) {

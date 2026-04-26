@@ -112,24 +112,33 @@ export class CustomersService implements OnModuleInit {
         }
     }
 
+    /** Strip whitespace, dashes, parentheses, and a leading +91 / 91
+     *  country code so all common formats compare as equal. */
+    private normalizePhone(phone: string): string {
+        return phone.replace(/[\s\-()]/g, '').replace(/^\+?91/, '').trim();
+    }
+
     /** Phone numbers must be unique within the tenant's customers AND
      *  unique across the entire users table (since customers get auto-linked
-     *  user accounts on the same phone). */
+     *  user accounts on the same phone). All comparisons are normalized so
+     *  9876543210, +919876543210, 919876543210 are treated as the same. */
     private async assertPhoneUnique(
         tenantId: string,
         phone: string | undefined | null,
         excludeId?: string,
     ) {
-        const trimmed = phone?.trim();
-        if (!trimmed) return;
+        if (!phone) return;
+        const normalized = this.normalizePhone(phone);
+        if (!normalized) return;
 
-        // 1) Same-tenant active customer with this phone
-        const customerWhere: any = {
-            tenant_id: tenantId,
-            phone: trimmed,
-            is_active: true,
-        };
-        if (excludeId) customerWhere.id = Not(excludeId);
+        const variants = [normalized, '+91' + normalized, '91' + normalized];
+
+        // 1) Same-tenant active customer with this phone (any variant)
+        const customerWhere = variants.map((v) => {
+            const w: any = { tenant_id: tenantId, phone: v, is_active: true };
+            if (excludeId) w.id = Not(excludeId);
+            return w;
+        });
         const existingCustomer = await this.customerRepo.findOne({ where: customerWhere });
         if (existingCustomer) {
             throw new ConflictException(
@@ -139,7 +148,7 @@ export class CustomersService implements OnModuleInit {
 
         // 2) Any user (any tenant, any role) on this phone — except the
         //    user that's already linked to the customer being updated
-        const existingUser = await this.usersService.findByPhone(trimmed);
+        const existingUser = await this.usersService.findByPhone(normalized);
         if (existingUser && (!excludeId || existingUser.customer_id !== excludeId)) {
             throw new ConflictException(
                 'This phone number is already in use by an existing user account. Please use a different number.',

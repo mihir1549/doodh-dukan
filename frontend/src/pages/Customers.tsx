@@ -122,11 +122,12 @@ export default function Customers() {
             if (num) payload.customer_number = Number(num);
 
             await customerApi.create(payload);
-            toast.success('Customer added successfully');
-            setFormData({ name: '', phone: '', address: '', notes: '', customer_number: '' });
+            // 1. close modal  2. reset form  3. refresh list  4. toast last
             setShowForm(false);
+            setFormData({ name: '', phone: '', address: '', notes: '', customer_number: '' });
             setPage(1);
-            loadCustomers(search, 1);
+            await loadCustomers(search, 1);
+            toast.success('Customer added successfully ✓');
         } catch (err: any) {
             if (err.response?.status === 409) {
                 // Surface backend's specific message (phone or customer_number conflict)
