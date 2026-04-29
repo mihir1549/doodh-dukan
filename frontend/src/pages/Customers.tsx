@@ -5,7 +5,7 @@ import {
     BookOpen, Users, CheckCircle2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { customerApi, ledgerApi } from '../api';
+import { customerApi } from '../api';
 import { useAuth } from '../AuthContext';
 import { formatAddress, idBadgeFontSize } from '../utils/avatar';
 import SetOpeningBalanceModal from '../components/SetOpeningBalanceModal';
@@ -67,30 +67,32 @@ export default function Customers() {
 
     const loadBalances = useCallback(async (ids: string[]) => {
         if (!ids.length) return;
-        const results = await Promise.allSettled(
-            ids.map((id) => ledgerApi.getCustomerBalance(id))
-        );
-        const newBalances: Record<string, number> = {};
-        results.forEach((r, i) => {
-            if (r.status === 'fulfilled') {
-                newBalances[ids[i]] = Number(r.value.data?.data?.current_balance ?? 0);
-            }
-        });
-        setBalances((prev) => ({ ...prev, ...newBalances }));
+        try {
+            const res = await customerApi.getBulkBalances(ids.join(','));
+            const map: Record<string, number> = res.data?.data ?? {};
+            const newBalances: Record<string, number> = {};
+            ids.forEach((id) => {
+                newBalances[id] = Number(map[id] ?? 0);
+            });
+            setBalances((prev) => ({ ...prev, ...newBalances }));
+        } catch {
+            // leave balances unset; UI handles missing entries
+        }
     }, []);
 
     const loadOpeningFlags = useCallback(async (ids: string[]) => {
         if (!isAdmin || !ids.length) return;
-        const results = await Promise.allSettled(
-            ids.map((id) => ledgerApi.hasOpeningBalance(id))
-        );
-        const newFlags: Record<string, boolean> = {};
-        results.forEach((r, i) => {
-            if (r.status === 'fulfilled') {
-                newFlags[ids[i]] = r.value.data?.data?.has_opening_balance ?? false;
-            }
-        });
-        setOpeningFlags((prev) => ({ ...prev, ...newFlags }));
+        try {
+            const res = await customerApi.getBulkOpeningBalanceStatus(ids.join(','));
+            const map: Record<string, boolean> = res.data?.data ?? {};
+            const newFlags: Record<string, boolean> = {};
+            ids.forEach((id) => {
+                newFlags[id] = Boolean(map[id]);
+            });
+            setOpeningFlags((prev) => ({ ...prev, ...newFlags }));
+        } catch {
+            // leave flags unset
+        }
     }, [isAdmin]);
 
     useEffect(() => {

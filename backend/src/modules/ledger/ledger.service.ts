@@ -336,7 +336,10 @@ export class LedgerService {
         return count > 0;
     }
 
-    @Cron('1 0 1 * *') // 00:01 on 1st of every month
+    @Cron('1 0 1 * *', {
+        name: 'monthEndCarryForward',
+        timeZone: 'Asia/Kolkata',
+    })
     async runMonthEndCarryForward(): Promise<void> {
         const now = new Date();
         // Reference month is the month that just ended

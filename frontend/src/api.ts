@@ -82,6 +82,10 @@ export const customerApi = {
     update: (id: string, data: any) => api.patch(`/customers/${id}`, data),
     deactivate: (id: string) => api.delete(`/customers/${id}`),
     saveSequence: (sequence: number[]) => api.patch('/customers/sequence', { sequence }),
+    getBulkBalances: (ids: string) =>
+        api.get('/customers/balances', { params: { ids } }),
+    getBulkOpeningBalanceStatus: (ids: string) =>
+        api.get('/customers/opening-balance-status', { params: { ids } }),
 };
 
 // --- Product APIs ---

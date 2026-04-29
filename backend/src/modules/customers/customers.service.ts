@@ -1,19 +1,59 @@
 import { Injectable, NotFoundException, OnModuleInit, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, ILike, Brackets, Not } from 'typeorm';
+import { Repository, ILike, Brackets, Not, In } from 'typeorm';
 import { Customer } from './customer.entity';
 import { CreateCustomerDto, UpdateCustomerDto } from './dto/customer.dto';
 import { UsersService } from '../users/users.service';
 import { TenantsService } from '../tenants/tenants.service';
+import { CustomerBalance } from '../ledger/customer-balance.entity';
+import { LedgerEntry, LedgerEntryType } from '../ledger/ledger.entity';
 
 @Injectable()
 export class CustomersService implements OnModuleInit {
     constructor(
         @InjectRepository(Customer)
         private customerRepo: Repository<Customer>,
+        @InjectRepository(CustomerBalance)
+        private balanceRepo: Repository<CustomerBalance>,
+        @InjectRepository(LedgerEntry)
+        private ledgerEntryRepo: Repository<LedgerEntry>,
         private usersService: UsersService,
         private tenantsService: TenantsService,
     ) { }
+
+    async getBulkBalances(
+        customerIds: string[],
+        tenantId: string,
+    ): Promise<Record<string, number>> {
+        if (!customerIds.length) return {};
+        const balances = await this.balanceRepo.find({
+            where: { customer_id: In(customerIds), tenant_id: tenantId },
+        });
+        return balances.reduce((acc, b) => {
+            acc[b.customer_id] = Number(b.current_balance);
+            return acc;
+        }, {} as Record<string, number>);
+    }
+
+    async getBulkOpeningBalanceStatus(
+        customerIds: string[],
+        tenantId: string,
+    ): Promise<Record<string, boolean>> {
+        if (!customerIds.length) return {};
+        const entries = await this.ledgerEntryRepo.find({
+            where: {
+                customer_id: In(customerIds),
+                tenant_id: tenantId,
+                entry_type: LedgerEntryType.OPENING_BALANCE,
+            },
+            select: ['customer_id'],
+        });
+        const hasOpening = new Set(entries.map((e) => e.customer_id));
+        return customerIds.reduce((acc, id) => {
+            acc[id] = hasOpening.has(id);
+            return acc;
+        }, {} as Record<string, boolean>);
+    }
 
     async onModuleInit() {
         console.log('🚀 Syncing customer user accounts...');

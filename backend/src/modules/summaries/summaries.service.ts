@@ -127,8 +127,12 @@ export class SummariesService {
             where: { tenant_id: tenantId, is_active: true },
         });
 
-        for (const customer of customers) {
-            await this.recalculateSingle(tenantId, customer.id, monthYear);
+        const BATCH_SIZE = 10;
+        for (let i = 0; i < customers.length; i += BATCH_SIZE) {
+            const batch = customers.slice(i, i + BATCH_SIZE);
+            await Promise.all(
+                batch.map((c) => this.recalculateSingle(tenantId, c.id, monthYear)),
+            );
         }
 
         return { message: `Recalculated summaries for ${monthYear}` };

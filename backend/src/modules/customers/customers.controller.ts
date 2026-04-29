@@ -36,6 +36,29 @@ export class CustomersController {
         });
     }
 
+    @Get('balances')
+    @Roles(UserRole.OWNER, UserRole.SHOP_STAFF, UserRole.DELIVERY)
+    async getBulkBalances(
+        @TenantId() tenantId: string,
+        @Query('ids') ids: string,
+    ) {
+        const customerIds = (ids || '').split(',').filter(Boolean);
+        return this.customersService.getBulkBalances(customerIds, tenantId);
+    }
+
+    @Get('opening-balance-status')
+    @Roles(UserRole.OWNER, UserRole.SHOP_STAFF)
+    async getBulkOpeningBalanceStatus(
+        @TenantId() tenantId: string,
+        @Query('ids') ids: string,
+    ) {
+        const customerIds = (ids || '').split(',').filter(Boolean);
+        return this.customersService.getBulkOpeningBalanceStatus(
+            customerIds,
+            tenantId,
+        );
+    }
+
     @Get(':id')
     @Roles(UserRole.OWNER, UserRole.SHOP_STAFF, UserRole.DELIVERY)
     async findOne(@TenantId() tenantId: string, @Param('id') id: string) {

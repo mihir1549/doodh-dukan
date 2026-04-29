@@ -23,7 +23,10 @@ export class SchedulerService {
      * Rule 7: Runs on 1st of every month at 00:05 AM IST
      * Recalculates final summaries for the previous month across all tenants
      */
-    @Cron('5 0 1 * *', { timeZone: 'Asia/Kolkata' })
+    @Cron('5 0 1 * *', {
+        name: 'finalizeLastMonth',
+        timeZone: 'Asia/Kolkata',
+    })
     async finalizeLastMonth() {
         const lastMonth = getPreviousMonthYear();
         this.logger.log(`Starting month-end finalization for ${lastMonth}`);
