@@ -5,7 +5,7 @@ import {
     ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { Repository, DataSource, EntityManager } from 'typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import {
     LedgerEntry,
@@ -69,7 +69,7 @@ export class LedgerService {
                     : -Number(dto.amount);
 
                 const delta = oldEffect + newEffect; // old effect was reversed, new applied
-                await this.adjustBalance(qr, dto.customer_id, tenantId, delta);
+                await this.adjustBalance(qr.manager, dto.customer_id, tenantId, delta);
             } else {
                 entry = qr.manager.create(LedgerEntry, {
                     tenant_id: tenantId,
@@ -87,7 +87,7 @@ export class LedgerService {
                 const balanceDelta = dto.direction === LedgerDirection.DEBIT
                     ? Number(dto.amount)
                     : -Number(dto.amount);
-                await this.adjustBalance(qr, dto.customer_id, tenantId, balanceDelta);
+                await this.adjustBalance(qr.manager, dto.customer_id, tenantId, balanceDelta);
             }
 
             await qr.commitTransaction();
@@ -100,19 +100,67 @@ export class LedgerService {
         }
     }
 
+    /** Post the monthly bill (and optionally an ADVANCE_ADJUSTED) for a
+     *  customer's lock event.
+     *
+     *  When `externalManager` is supplied, all DB writes go through it so the
+     *  caller can compose lock + bill posting in a single transaction
+     *  (used by SummariesService.lock). When omitted, this method opens its
+     *  own QueryRunner transaction (used by any future direct caller). */
     async postMonthlyBill(
         customerId: string,
         monthYear: string,
         billAmount: number,
         tenantId: string,
         lockedByUserId: string,
+        externalManager?: EntityManager,
     ): Promise<void> {
         if (billAmount <= 0) return;
 
+        if (externalManager) {
+            return this.postMonthlyBillWithManager(
+                externalManager,
+                customerId,
+                monthYear,
+                billAmount,
+                tenantId,
+                lockedByUserId,
+            );
+        }
+
+        const qr = this.dataSource.createQueryRunner();
+        await qr.connect();
+        await qr.startTransaction();
+        try {
+            await this.postMonthlyBillWithManager(
+                qr.manager,
+                customerId,
+                monthYear,
+                billAmount,
+                tenantId,
+                lockedByUserId,
+            );
+            await qr.commitTransaction();
+        } catch (err) {
+            await qr.rollbackTransaction();
+            throw err;
+        } finally {
+            await qr.release();
+        }
+    }
+
+    private async postMonthlyBillWithManager(
+        manager: EntityManager,
+        customerId: string,
+        monthYear: string,
+        billAmount: number,
+        tenantId: string,
+        lockedByUserId: string,
+    ): Promise<void> {
         // Idempotency: skip if there is already an *unreversed* BILL_POSTED for
         // this month. After a lock -> unlock cycle, BILL_REVERSED with later
         // created_at cancels the prior bill so we can re-post a fresh one.
-        const existingBill = await this.ledgerRepo.findOne({
+        const existingBill = await manager.findOne(LedgerEntry, {
             where: {
                 customer_id: customerId,
                 tenant_id: tenantId,
@@ -122,7 +170,7 @@ export class LedgerService {
             order: { created_at: 'DESC' },
         });
         if (existingBill) {
-            const latestReversal = await this.ledgerRepo.findOne({
+            const latestReversal = await manager.findOne(LedgerEntry, {
                 where: {
                     customer_id: customerId,
                     tenant_id: tenantId,
@@ -139,63 +187,50 @@ export class LedgerService {
             // else: bill was reversed, fall through and post a fresh one
         }
 
-        const balanceRow = await this.ensureBalanceRow(customerId, tenantId);
+        const balanceRow = await this.ensureBalanceRow(customerId, tenantId, manager);
         const currentBalance = Number(balanceRow.current_balance);
 
-        const qr = this.dataSource.createQueryRunner();
-        await qr.connect();
-        await qr.startTransaction();
+        const transactionDate = `${monthYear}-01`;
+        let remainingBill = billAmount;
 
-        try {
-            const transactionDate = `${monthYear}-01`;
-            let remainingBill = billAmount;
+        if (currentBalance < 0) {
+            // Customer has advance — use it up first
+            const advance = Math.abs(currentBalance);
+            const advanceUsed = Math.min(advance, billAmount);
 
-            if (currentBalance < 0) {
-                // Customer has advance — use it up first
-                const advance = Math.abs(currentBalance);
-                const advanceUsed = Math.min(advance, billAmount);
+            const adjEntry = manager.create(LedgerEntry, {
+                tenant_id: tenantId,
+                customer_id: customerId,
+                entry_type: LedgerEntryType.ADVANCE_ADJUSTED,
+                direction: LedgerDirection.CREDIT,
+                amount: advanceUsed,
+                reference_month: monthYear,
+                transaction_date: transactionDate,
+                status: LedgerStatus.APPROVED,
+                recorded_by: lockedByUserId,
+            });
+            await manager.save(LedgerEntry, adjEntry);
+            // CREDIT reduces the "owed" but here balance is negative (advance)
+            // Advance adjusted: the advance shrinks → balance moves towards 0 (increases)
+            await this.adjustBalance(manager, customerId, tenantId, advanceUsed);
 
-                const adjEntry = qr.manager.create(LedgerEntry, {
-                    tenant_id: tenantId,
-                    customer_id: customerId,
-                    entry_type: LedgerEntryType.ADVANCE_ADJUSTED,
-                    direction: LedgerDirection.CREDIT,
-                    amount: advanceUsed,
-                    reference_month: monthYear,
-                    transaction_date: transactionDate,
-                    status: LedgerStatus.APPROVED,
-                    recorded_by: lockedByUserId,
-                });
-                await qr.manager.save(LedgerEntry, adjEntry);
-                // CREDIT reduces the "owed" but here balance is negative (advance)
-                // Advance adjusted: the advance shrinks → balance moves towards 0 (increases)
-                await this.adjustBalance(qr, customerId, tenantId, advanceUsed);
+            remainingBill = billAmount - advanceUsed;
+        }
 
-                remainingBill = billAmount - advanceUsed;
-            }
-
-            if (remainingBill > 0) {
-                const billEntry = qr.manager.create(LedgerEntry, {
-                    tenant_id: tenantId,
-                    customer_id: customerId,
-                    entry_type: LedgerEntryType.BILL_POSTED,
-                    direction: LedgerDirection.DEBIT,
-                    amount: remainingBill,
-                    reference_month: monthYear,
-                    transaction_date: transactionDate,
-                    status: LedgerStatus.APPROVED,
-                    recorded_by: lockedByUserId,
-                });
-                await qr.manager.save(LedgerEntry, billEntry);
-                await this.adjustBalance(qr, customerId, tenantId, remainingBill);
-            }
-
-            await qr.commitTransaction();
-        } catch (err) {
-            await qr.rollbackTransaction();
-            throw err;
-        } finally {
-            await qr.release();
+        if (remainingBill > 0) {
+            const billEntry = manager.create(LedgerEntry, {
+                tenant_id: tenantId,
+                customer_id: customerId,
+                entry_type: LedgerEntryType.BILL_POSTED,
+                direction: LedgerDirection.DEBIT,
+                amount: remainingBill,
+                reference_month: monthYear,
+                transaction_date: transactionDate,
+                status: LedgerStatus.APPROVED,
+                recorded_by: lockedByUserId,
+            });
+            await manager.save(LedgerEntry, billEntry);
+            await this.adjustBalance(manager, customerId, tenantId, remainingBill);
         }
     }
 
@@ -241,7 +276,7 @@ export class LedgerService {
             await qr.manager.save(LedgerEntry, entry);
 
             // CREDIT → balance decreases (customer pays off debt or builds advance)
-            await this.adjustBalance(qr, entry.customer_id, tenantId, -Number(entry.amount));
+            await this.adjustBalance(qr.manager, entry.customer_id, tenantId, -Number(entry.amount));
 
             await qr.commitTransaction();
             return entry;
@@ -364,34 +399,63 @@ export class LedgerService {
      *  `recalculateBalance` helper and the manual emergency endpoint.
      *  Skips PENDING and REJECTED entries; everything else contributes per
      *  its `direction` field, which is set correctly per entry_type
-     *  (including BILL_REVERSED -> CREDIT -> subtract). */
+     *  (including BILL_REVERSED -> CREDIT -> subtract).
+     *
+     *  Wrapped in a transaction with a pessimistic_write lock on the
+     *  customer_balances row to prevent concurrent payment approvals or
+     *  bill posts from clobbering the recomputed value. */
     private async recalculateBalanceInternal(
         customerId: string,
         tenantId: string,
     ): Promise<{ newBalance: number; entriesSummed: number }> {
-        const entries = await this.ledgerRepo.find({
-            where: { customer_id: customerId, tenant_id: tenantId },
-            order: { transaction_date: 'ASC', created_at: 'ASC' },
-        });
-
-        let balance = 0;
-        let entriesSummed = 0;
-        for (const e of entries) {
-            if (e.status === LedgerStatus.REJECTED) continue;
-            if (e.status === LedgerStatus.PENDING) continue;
-            entriesSummed += 1;
-            if (e.direction === LedgerDirection.DEBIT) {
-                balance += Number(e.amount);
-            } else {
-                balance -= Number(e.amount);
+        const qr = this.dataSource.createQueryRunner();
+        await qr.connect();
+        await qr.startTransaction();
+        try {
+            // Acquire row lock first so any concurrent adjustBalance() blocks
+            // until our recompute commits.
+            let row = await qr.manager.findOne(CustomerBalance, {
+                where: { customer_id: customerId },
+                lock: { mode: 'pessimistic_write' },
+            });
+            if (!row) {
+                row = qr.manager.create(CustomerBalance, {
+                    tenant_id: tenantId,
+                    customer_id: customerId,
+                    current_balance: 0,
+                });
+                row = await qr.manager.save(CustomerBalance, row);
             }
+
+            const entries = await qr.manager.find(LedgerEntry, {
+                where: { customer_id: customerId, tenant_id: tenantId },
+                order: { transaction_date: 'ASC', created_at: 'ASC' },
+            });
+
+            let balance = 0;
+            let entriesSummed = 0;
+            for (const e of entries) {
+                if (e.status === LedgerStatus.REJECTED) continue;
+                if (e.status === LedgerStatus.PENDING) continue;
+                entriesSummed += 1;
+                if (e.direction === LedgerDirection.DEBIT) {
+                    balance += Number(e.amount);
+                } else {
+                    balance -= Number(e.amount);
+                }
+            }
+
+            row.current_balance = balance;
+            await qr.manager.save(CustomerBalance, row);
+
+            await qr.commitTransaction();
+            return { newBalance: balance, entriesSummed };
+        } catch (err) {
+            await qr.rollbackTransaction();
+            throw err;
+        } finally {
+            await qr.release();
         }
-
-        const row = await this.ensureBalanceRow(customerId, tenantId);
-        row.current_balance = balance;
-        await this.balanceRepo.save(row);
-
-        return { newBalance: balance, entriesSummed };
     }
 
     async getPendingPayments(tenantId: string) {
@@ -459,25 +523,51 @@ export class LedgerService {
 
     // ── Private Helpers ──────────────────────────────────────────────────────
 
-    private async adjustBalance(qr: any, customerId: string, tenantId: string, delta: number) {
-        const row = await qr.manager.findOne(CustomerBalance, {
+    /** Apply +/- delta to a customer's running balance using the supplied
+     *  EntityManager (which the caller pulls from a transactional QueryRunner
+     *  or from this.dataSource.manager for non-transactional callers). */
+    private async adjustBalance(
+        manager: EntityManager,
+        customerId: string,
+        tenantId: string,
+        delta: number,
+    ) {
+        const row = await manager.findOne(CustomerBalance, {
             where: { customer_id: customerId },
         });
 
         if (row) {
             row.current_balance = Number(row.current_balance) + delta;
-            await qr.manager.save(CustomerBalance, row);
+            await manager.save(CustomerBalance, row);
         } else {
-            const newRow = qr.manager.create(CustomerBalance, {
+            const newRow = manager.create(CustomerBalance, {
                 tenant_id: tenantId,
                 customer_id: customerId,
                 current_balance: delta,
             });
-            await qr.manager.save(CustomerBalance, newRow);
+            await manager.save(CustomerBalance, newRow);
         }
     }
 
-    private async ensureBalanceRow(customerId: string, tenantId: string): Promise<CustomerBalance> {
+    private async ensureBalanceRow(
+        customerId: string,
+        tenantId: string,
+        manager?: EntityManager,
+    ): Promise<CustomerBalance> {
+        if (manager) {
+            let row = await manager.findOne(CustomerBalance, {
+                where: { customer_id: customerId },
+            });
+            if (!row) {
+                row = manager.create(CustomerBalance, {
+                    tenant_id: tenantId,
+                    customer_id: customerId,
+                    current_balance: 0,
+                });
+                row = await manager.save(CustomerBalance, row);
+            }
+            return row;
+        }
         let row = await this.balanceRepo.findOne({ where: { customer_id: customerId } });
         if (!row) {
             row = this.balanceRepo.create({ tenant_id: tenantId, customer_id: customerId, current_balance: 0 });

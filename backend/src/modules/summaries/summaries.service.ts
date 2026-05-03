@@ -100,20 +100,22 @@ export class SummariesService {
     }
 
     async lock(tenantId: string, summaryId: string, userId: string) {
-        // ── Phase 1: recalc-from-source + safety check, in one transaction ──
+        // Single transaction for the entire lock event:
+        //   recalc summary -> safety check -> post bill (incl. advance
+        //   adjustment + balance update) -> flip is_locked. If any step
+        //   fails, all of it rolls back, leaving no orphan state.
         const qr = this.dataSource.createQueryRunner();
         await qr.connect();
         await qr.startTransaction();
 
-        let summary: MonthlySummary;
-        let freshTotal: number;
-
         try {
-            const found = await qr.manager.findOne(MonthlySummary, {
+            // Pessimistic write lock on the summary row blocks a concurrent
+            // OWNER session (laptop + phone) from racing this method.
+            const summary = await qr.manager.findOne(MonthlySummary, {
                 where: { id: summaryId, tenant_id: tenantId },
+                lock: { mode: 'pessimistic_write' },
             });
-            if (!found) throw new NotFoundException('Summary not found');
-            summary = found;
+            if (!summary) throw new NotFoundException('Summary not found');
 
             // 5a — Recalculate total_amount from active daily_entries.
             // Trust the source, never the cached field.
@@ -126,7 +128,7 @@ export class SummariesService {
                 .andWhere('e.month_year = :monthYear', { monthYear: summary.month_year })
                 .andWhere('e.is_deleted = false')
                 .getRawOne();
-            freshTotal = Number(sumRow?.total) || 0;
+            const freshTotal = Number(sumRow?.total) || 0;
             const freshCount = Number(sumRow?.count) || 0;
 
             summary.total_amount = freshTotal;
@@ -135,8 +137,10 @@ export class SummariesService {
             await qr.manager.save(MonthlySummary, summary);
 
             // 5b — Block lock if a previous BILL_POSTED was never reversed.
-            // Should never happen in normal flow; protects against silent
-            // double-billing if somebody lock-then-locks via SQL or a race.
+            // Equivalent to "BILL_POSTED with no later BILL_REVERSED in the
+            // same scope" because if the most-recent BILL_POSTED has a later
+            // reversal, every prior BILL_POSTED also does (they're older
+            // than that same reversal). Cheaper than a NOT EXISTS subquery.
             const latestBill = await qr.manager.findOne(LedgerEntry, {
                 where: {
                     tenant_id: tenantId,
@@ -173,64 +177,66 @@ export class SummariesService {
                 }
             }
 
+            // Post the bill (and any ADVANCE_ADJUSTED) using OUR manager so
+            // those writes share this transaction.
+            await this.ledgerService.postMonthlyBill(
+                summary.customer_id,
+                summary.month_year,
+                freshTotal,
+                tenantId,
+                userId,
+                qr.manager,
+            );
+
+            // Flip is_locked last so a downstream failure aborts cleanly.
+            summary.is_locked = true;
+            summary.locked_at = new Date();
+            summary.locked_by = userId;
+            await qr.manager.save(MonthlySummary, summary);
+
+            // Read back the entries we just created (still inside the tx;
+            // they're visible to our manager) so the response carries
+            // bill_entry_id and advance_adjusted.
+            const billEntry = await qr.manager.findOne(LedgerEntry, {
+                where: {
+                    tenant_id: tenantId,
+                    customer_id: summary.customer_id,
+                    reference_month: summary.month_year,
+                    entry_type: LedgerEntryType.BILL_POSTED,
+                    status: LedgerStatus.APPROVED,
+                },
+                order: { created_at: 'DESC' },
+            });
+            const advanceEntry = await qr.manager.findOne(LedgerEntry, {
+                where: {
+                    tenant_id: tenantId,
+                    customer_id: summary.customer_id,
+                    reference_month: summary.month_year,
+                    entry_type: LedgerEntryType.ADVANCE_ADJUSTED,
+                    status: LedgerStatus.APPROVED,
+                },
+                order: { created_at: 'DESC' },
+            });
+            const balRow = await qr.manager.findOne(CustomerBalance, {
+                where: { customer_id: summary.customer_id },
+            });
+
             await qr.commitTransaction();
+
+            return {
+                summary_id: summary.id,
+                is_locked: true,
+                bill_amount: freshTotal,
+                bill_entry_id: billEntry?.id ?? null,
+                advance_adjusted: advanceEntry ? Number(advanceEntry.amount) : 0,
+                balance_after: Number(balRow?.current_balance ?? 0),
+            };
         } catch (err) {
             await qr.rollbackTransaction();
             throw err;
         } finally {
             await qr.release();
         }
-
-        // ── Phase 2: post the bill (its own transaction inside ledger service)
-        await this.ledgerService.postMonthlyBill(
-            summary.customer_id,
-            summary.month_year,
-            freshTotal,
-            tenantId,
-            userId,
-        );
-
-        // ── Phase 3: flip is_locked only after a successful post.
-        // If postMonthlyBill threw, summary stays unlocked — no orphan state.
-        summary.is_locked = true;
-        summary.locked_at = new Date();
-        summary.locked_by = userId;
-        await this.summaryRepo.save(summary);
-
-        // ── Phase 4: read back the entries postMonthlyBill just created so
-        // we can return an enriched response (bill_entry_id, advance_adjusted).
-        const billEntry = await this.ledgerEntryRepo.findOne({
-            where: {
-                tenant_id: tenantId,
-                customer_id: summary.customer_id,
-                reference_month: summary.month_year,
-                entry_type: LedgerEntryType.BILL_POSTED,
-                status: LedgerStatus.APPROVED,
-            },
-            order: { created_at: 'DESC' },
-        });
-        const advanceEntry = await this.ledgerEntryRepo.findOne({
-            where: {
-                tenant_id: tenantId,
-                customer_id: summary.customer_id,
-                reference_month: summary.month_year,
-                entry_type: LedgerEntryType.ADVANCE_ADJUSTED,
-                status: LedgerStatus.APPROVED,
-            },
-            order: { created_at: 'DESC' },
-        });
-        const balRow = await this.balanceRepo.findOne({
-            where: { customer_id: summary.customer_id },
-        });
-
-        return {
-            summary_id: summary.id,
-            is_locked: true,
-            bill_amount: freshTotal,
-            bill_entry_id: billEntry?.id ?? null,
-            advance_adjusted: advanceEntry ? Number(advanceEntry.amount) : 0,
-            balance_after: Number(balRow?.current_balance ?? 0),
-        };
     }
 
     async unlock(tenantId: string, summaryId: string, userId: string) {
@@ -239,8 +245,12 @@ export class SummariesService {
         await qr.startTransaction();
 
         try {
+            // Pessimistic write lock blocks a concurrent unlock (e.g. owner
+            // double-tapping or two devices) from creating duplicate
+            // BILL_REVERSED entries.
             const summary = await qr.manager.findOne(MonthlySummary, {
                 where: { id: summaryId, tenant_id: tenantId },
+                lock: { mode: 'pessimistic_write' },
             });
             if (!summary) throw new NotFoundException('Summary not found');
 
