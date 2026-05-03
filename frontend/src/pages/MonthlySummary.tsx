@@ -70,7 +70,16 @@ export default function MonthlySummary() {
             toast.success(name ? `Card unlocked for ${name}` : 'Card unlocked');
             loadSummaries();
         } catch (err: any) {
-            toast.error(err.response?.data?.message || 'Failed to unlock');
+            const data = err.response?.data;
+            const code = data?.code || data?.error?.code;
+            const msg = data?.message || data?.error?.message || 'Failed to unlock';
+            // Soft-toast for "already unlocked" — most often a double-tap.
+            if (err.response?.status === 409 && code === 'SUMMARY_ALREADY_UNLOCKED') {
+                toast(msg);
+                loadSummaries();   // sync UI with server state
+                return;
+            }
+            toast.error(msg);
         }
     };
 

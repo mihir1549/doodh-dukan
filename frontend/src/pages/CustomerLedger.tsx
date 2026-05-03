@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
     ChevronLeft, Plus, BookOpen, AlertCircle, CheckCircle2, Clock,
-    XCircle, ArrowUpRight, ArrowDownLeft, Wallet,
+    XCircle, ArrowUpRight, ArrowDownLeft, Wallet, RotateCcw,
 } from 'lucide-react';
 import { ledgerApi, customerApi } from '../api';
 import { idBadgeFontSize } from '../utils/avatar';
@@ -15,6 +15,7 @@ const ENTRY_LABELS: Record<string, string> = {
     PAYMENT: 'Payment',
     CARRY_FORWARD: 'Carried Forward',
     ADVANCE_ADJUSTED: 'Advance Adjusted',
+    BILL_REVERSED: 'Bill reversed — month reopened',
 };
 
 function formatDate(d: string) {
@@ -51,6 +52,9 @@ function LedgerRow({ entry: e }: { entry: any }) {
         if (isPending) statusIcon = <Clock size={13} strokeWidth={2} style={{ color: 'var(--warning)', flexShrink: 0 }} />;
         else if (isRejected) statusIcon = <XCircle size={13} strokeWidth={2} style={{ color: 'var(--danger)', flexShrink: 0 }} />;
         else statusIcon = <CheckCircle2 size={13} strokeWidth={2} style={{ color: 'var(--success)', flexShrink: 0 }} />;
+    } else if (e.entry_type === 'BILL_REVERSED') {
+        desc = label;
+        statusIcon = <RotateCcw size={13} strokeWidth={2} style={{ color: 'var(--success)', flexShrink: 0 }} />;
     } else {
         desc = label;
     }

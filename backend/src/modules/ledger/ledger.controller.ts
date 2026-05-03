@@ -101,6 +101,22 @@ export class LedgerController {
         return { has_opening_balance: has };
     }
 
+    /** Emergency: rebuild a customer's running balance from the entire
+     *  ledger history. OWNER only. Not used in normal flow. */
+    @Post('customer/:id/recalculate-balance')
+    @Roles(UserRole.OWNER)
+    async recalculateBalance(
+        @TenantId() tenantId: string,
+        @CurrentUser() user: any,
+        @Param('id') customerId: string,
+    ) {
+        return this.ledgerService.recalculateBalanceManual(
+            tenantId,
+            customerId,
+            user.userId,
+        );
+    }
+
     // Shop-level customer financial data — SUPER_ADMIN explicitly excluded
     @Get('pending-payments')
     @Roles(UserRole.OWNER, UserRole.SHOP_STAFF)

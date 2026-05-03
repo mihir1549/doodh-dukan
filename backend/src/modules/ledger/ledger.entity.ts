@@ -17,6 +17,10 @@ export enum LedgerEntryType {
     PAYMENT = 'PAYMENT',
     CARRY_FORWARD = 'CARRY_FORWARD',
     ADVANCE_ADJUSTED = 'ADVANCE_ADJUSTED',
+    /** Created on summary unlock to cancel a prior BILL_POSTED. The full
+     *  original bill (BILL_POSTED + ADVANCE_ADJUSTED amounts) is credited
+     *  back so customer balance returns to its pre-lock state. */
+    BILL_REVERSED = 'BILL_REVERSED',
 }
 
 export enum LedgerDirection {

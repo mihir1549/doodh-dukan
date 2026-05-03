@@ -109,6 +109,9 @@ export class LedgerService {
     ): Promise<void> {
         if (billAmount <= 0) return;
 
+        // Idempotency: skip if there is already an *unreversed* BILL_POSTED for
+        // this month. After a lock -> unlock cycle, BILL_REVERSED with later
+        // created_at cancels the prior bill so we can re-post a fresh one.
         const existingBill = await this.ledgerRepo.findOne({
             where: {
                 customer_id: customerId,
@@ -116,8 +119,25 @@ export class LedgerService {
                 entry_type: LedgerEntryType.BILL_POSTED,
                 reference_month: monthYear,
             },
+            order: { created_at: 'DESC' },
         });
-        if (existingBill) return; // idempotent — already posted
+        if (existingBill) {
+            const latestReversal = await this.ledgerRepo.findOne({
+                where: {
+                    customer_id: customerId,
+                    tenant_id: tenantId,
+                    entry_type: LedgerEntryType.BILL_REVERSED,
+                    reference_month: monthYear,
+                },
+                order: { created_at: 'DESC' },
+            });
+            const stillActive =
+                !latestReversal ||
+                new Date(latestReversal.created_at).getTime() <=
+                    new Date(existingBill.created_at).getTime();
+            if (stillActive) return; // bill is current — no-op
+            // else: bill was reversed, fall through and post a fresh one
+        }
 
         const balanceRow = await this.ensureBalanceRow(customerId, tenantId);
         const currentBalance = Number(balanceRow.current_balance);
@@ -294,15 +314,72 @@ export class LedgerService {
     }
 
     async recalculateBalance(customerId: string, tenantId: string): Promise<void> {
+        await this.recalculateBalanceInternal(customerId, tenantId);
+    }
+
+    /** OWNER-only emergency rebuild: resets customer_balances.current_balance
+     *  from the entire ledger history. Returns a before/after report and
+     *  writes a warning to server logs (this is a manual override). */
+    async recalculateBalanceManual(
+        tenantId: string,
+        customerId: string,
+        userId: string,
+    ): Promise<{
+        customer_id: string;
+        balance_before: number;
+        balance_after: number;
+        entries_summed: number;
+        recalculated_at: string;
+    }> {
+        const beforeRow = await this.ensureBalanceRow(customerId, tenantId);
+        const balanceBefore = Number(beforeRow.current_balance);
+        const { newBalance, entriesSummed } =
+            await this.recalculateBalanceInternal(customerId, tenantId);
+        const recalculatedAt = new Date().toISOString();
+
+        // eslint-disable-next-line no-console
+        console.warn(
+            `[ledger] manual recalc of customer_balances`,
+            JSON.stringify({
+                tenant_id: tenantId,
+                customer_id: customerId,
+                triggered_by: userId,
+                balance_before: balanceBefore,
+                balance_after: newBalance,
+                entries_summed: entriesSummed,
+                at: recalculatedAt,
+            }),
+        );
+
+        return {
+            customer_id: customerId,
+            balance_before: balanceBefore,
+            balance_after: newBalance,
+            entries_summed: entriesSummed,
+            recalculated_at: recalculatedAt,
+        };
+    }
+
+    /** Direction-based balance rebuild used by both the silent
+     *  `recalculateBalance` helper and the manual emergency endpoint.
+     *  Skips PENDING and REJECTED entries; everything else contributes per
+     *  its `direction` field, which is set correctly per entry_type
+     *  (including BILL_REVERSED -> CREDIT -> subtract). */
+    private async recalculateBalanceInternal(
+        customerId: string,
+        tenantId: string,
+    ): Promise<{ newBalance: number; entriesSummed: number }> {
         const entries = await this.ledgerRepo.find({
             where: { customer_id: customerId, tenant_id: tenantId },
             order: { transaction_date: 'ASC', created_at: 'ASC' },
         });
 
         let balance = 0;
+        let entriesSummed = 0;
         for (const e of entries) {
             if (e.status === LedgerStatus.REJECTED) continue;
             if (e.status === LedgerStatus.PENDING) continue;
+            entriesSummed += 1;
             if (e.direction === LedgerDirection.DEBIT) {
                 balance += Number(e.amount);
             } else {
@@ -313,6 +390,8 @@ export class LedgerService {
         const row = await this.ensureBalanceRow(customerId, tenantId);
         row.current_balance = balance;
         await this.balanceRepo.save(row);
+
+        return { newBalance: balance, entriesSummed };
     }
 
     async getPendingPayments(tenantId: string) {

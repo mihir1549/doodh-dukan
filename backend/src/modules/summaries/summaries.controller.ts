@@ -49,8 +49,12 @@ export class SummariesController {
 
     @Post(':id/unlock')
     @Roles(UserRole.OWNER)
-    async unlock(@TenantId() tenantId: string, @Param('id') id: string) {
-        return this.summariesService.unlock(tenantId, id);
+    async unlock(
+        @TenantId() tenantId: string,
+        @CurrentUser() user: any,
+        @Param('id') id: string,
+    ) {
+        return this.summariesService.unlock(tenantId, id, user.userId);
     }
 
     @Post('recalculate')

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import {
     Milk, BookOpen, Settings as SettingsIcon, LogOut, X,
     CheckCircle2, Clock, XCircle, ArrowUpRight, ArrowDownLeft,
-    Lock, Unlock,
+    Lock, Unlock, RotateCcw,
 } from 'lucide-react';
 import { useAuth } from '../AuthContext';
 import { entryApi, summaryApi, userApi, ledgerApi } from '../api';
@@ -15,6 +15,7 @@ const ENTRY_LABELS: Record<string, string> = {
     PAYMENT: 'Payment',
     CARRY_FORWARD: 'Carried Forward',
     ADVANCE_ADJUSTED: 'Advance Adjusted',
+    BILL_REVERSED: 'Bill reversed — month reopened',
 };
 
 function formatLedgerDate(d: string) {
@@ -48,6 +49,8 @@ function PassbookRow({ entry: e }: { entry: any }) {
         if (isPending) statusIcon = <Clock size={13} strokeWidth={2} style={{ color: 'var(--warning)', flexShrink: 0 }} />;
         else if (isRejected) statusIcon = <XCircle size={13} strokeWidth={2} style={{ color: 'var(--danger)', flexShrink: 0 }} />;
         else statusIcon = <CheckCircle2 size={13} strokeWidth={2} style={{ color: 'var(--success)', flexShrink: 0 }} />;
+    } else if (e.entry_type === 'BILL_REVERSED') {
+        statusIcon = <RotateCcw size={13} strokeWidth={2} style={{ color: 'var(--success)', flexShrink: 0 }} />;
     }
 
     const sideColor = isPending
