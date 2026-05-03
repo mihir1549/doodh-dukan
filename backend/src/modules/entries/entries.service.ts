@@ -15,6 +15,7 @@ import { UserRole } from '../users/user.entity';
 import {
     getMonthYearFromDate,
     getTodayDateString,
+    formatMonthYearLabel,
 } from '../../common/utils/helpers';
 
 @Injectable()
@@ -136,9 +137,13 @@ export class EntriesService {
             },
         });
         if (existingSummary?.is_locked) {
-            throw new ConflictException(
-                'This month is locked. No changes allowed.',
-            );
+            throw new ConflictException({
+                success: false,
+                statusCode: 409,
+                code: 'MONTH_LOCKED',
+                message: `Cannot modify entry: ${formatMonthYearLabel(monthYear)} is locked. Unlock from Monthly Summary first.`,
+                month_year: monthYear,
+            });
         }
 
         // Rule 2: Get active price snapshot
@@ -254,9 +259,13 @@ export class EntriesService {
             },
         });
         if (summary?.is_locked) {
-            throw new ConflictException(
-                'This month is locked. No changes allowed.',
-            );
+            throw new ConflictException({
+                success: false,
+                statusCode: 409,
+                code: 'MONTH_LOCKED',
+                message: `Cannot modify entry: ${formatMonthYearLabel(entry.month_year)} is locked. Unlock from Monthly Summary first.`,
+                month_year: entry.month_year,
+            });
         }
 
         const quantity = Number(dto.quantity);
@@ -350,9 +359,13 @@ export class EntriesService {
             },
         });
         if (summary?.is_locked) {
-            throw new ConflictException(
-                'This month is locked. Cannot delete entry.',
-            );
+            throw new ConflictException({
+                success: false,
+                statusCode: 409,
+                code: 'MONTH_LOCKED',
+                message: `Cannot modify entry: ${formatMonthYearLabel(entry.month_year)} is locked. Unlock from Monthly Summary first.`,
+                month_year: entry.month_year,
+            });
         }
 
         const queryRunner = this.dataSource.createQueryRunner();

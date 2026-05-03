@@ -64,3 +64,19 @@ export function getMonthYearFromDate(date: string | Date): string {
 export function formatAmount(amount: number, symbol: string = '₹'): string {
     return `${symbol}${Number(amount).toFixed(2)}`;
 }
+
+const MONTH_NAMES = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+/**
+ * Convert 'YYYY-MM' to 'Month YYYY' (e.g. '2026-04' -> 'April 2026').
+ */
+export function formatMonthYearLabel(monthYear: string): string {
+    const match = /^(\d{4})-(\d{2})$/.exec(monthYear);
+    if (!match) return monthYear;
+    const [, year, mm] = match;
+    const idx = Number(mm) - 1;
+    return `${MONTH_NAMES[idx] ?? mm} ${year}`;
+}

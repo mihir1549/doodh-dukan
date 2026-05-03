@@ -1114,6 +1114,51 @@ input::placeholder {
   to   { transform: scale(1); opacity: 1; }
 }
 
+/* ============================================================
+   BOTTOM SHEET (slides up from bottom on mobile)
+   ============================================================ */
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 2000;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: sheetFade 0.2s ease-out;
+}
+.sheet-content {
+  position: fixed;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 480px;
+  background: var(--bg-elevated);
+  border-top-left-radius: var(--radius-xl);
+  border-top-right-radius: var(--radius-xl);
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.4);
+  z-index: 2001;
+  animation: sheetSlideUp 0.2s ease-out;
+  padding-bottom: env(safe-area-inset-bottom, 12px);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.sheet-handle {
+  width: 36px;
+  height: 4px;
+  background: var(--border-strong);
+  border-radius: 999px;
+  margin: 8px auto 4px;
+}
+@keyframes sheetSlideUp {
+  from { transform: translate(-50%, 100%); }
+  to   { transform: translate(-50%, 0); }
+}
+@keyframes sheetFade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
 .icon-btn {
   background: transparent;
   border: none;

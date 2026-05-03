@@ -3,15 +3,22 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
     ChevronLeft, ChevronRight, Pencil, Package, Calendar,
     Lock, Unlock, X, CheckCircle2, Wallet, TrendingUp, BookOpen,
+    MoreVertical,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { customerApi, summaryApi, entryApi } from '../api';
+import { useAuth } from '../AuthContext';
 import { idBadgeFontSize } from '../utils/avatar';
+import EntryActionSheet, { type RowState } from '../components/EntryActionSheet';
+import EntryFormModal from '../components/EntryFormModal';
+import DeleteEntryConfirm from '../components/DeleteEntryConfirm';
 
 export default function CustomerDetail() {
     const navigate = useNavigate();
     const { id } = useParams<{ id: string }>();
     const [searchParams] = useSearchParams();
+    const { user } = useAuth();
+    const isOwner = user?.role === 'OWNER' || user?.role?.toUpperCase() === 'OWNER';
 
     const [customer, setCustomer] = useState<any>(null);
     const [entries, setEntries] = useState<any[]>([]);
@@ -22,6 +29,26 @@ export default function CustomerDetail() {
     const [editForm, setEditForm] = useState({ name: '', phone: '', address: '', customer_number: '' });
     const [saving, setSaving] = useState(false);
     const [editError, setEditError] = useState('');
+
+    // Entry CRUD modal state (OWNER only)
+    const [actionSheet, setActionSheet] = useState<{
+        open: boolean;
+        date: string;          // YYYY-MM-DD
+        rowState: RowState;
+        existingEntry: any | null;
+    }>({ open: false, date: '', rowState: 'EMPTY', existingEntry: null });
+
+    const [formModal, setFormModal] = useState<{
+        open: boolean;
+        mode: 'add' | 'edit';
+        date: string;
+        existingEntry: any | null;
+    }>({ open: false, mode: 'add', date: '', existingEntry: null });
+
+    const [deleteModal, setDeleteModal] = useState<{
+        open: boolean;
+        entry: any | null;
+    }>({ open: false, entry: null });
 
     const now = new Date();
     const initialMonth = searchParams.get('month') || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -415,7 +442,7 @@ export default function CustomerDetail() {
                 <div
                     style={{
                         display: 'grid',
-                        gridTemplateColumns: '40px 1fr 60px 60px',
+                        gridTemplateColumns: isOwner ? '40px 1fr 56px 56px 44px' : '40px 1fr 60px 60px',
                         padding: '10px 14px',
                         background: 'var(--bg-elevated)',
                         borderBottom: '1px solid var(--border-subtle)',
@@ -430,6 +457,7 @@ export default function CustomerDetail() {
                     <div>Details</div>
                     <div style={{ textAlign: 'center' }}>By</div>
                     <div style={{ textAlign: 'right' }}>Time</div>
+                    {isOwner && <div />}
                 </div>
 
                 <div style={{ maxHeight: '58vh', overflowY: 'auto' }}>
@@ -473,12 +501,34 @@ export default function CustomerDetail() {
                                 ? rawBy.slice(0, 8) + '…'
                                 : rawBy;
 
+                        const dayDate = `${monthYear}-${String(day).padStart(2, '0')}`;
+                        const dayLabel = new Date(yearNum, monthNum - 1, day).toLocaleDateString('en-IN', {
+                            day: 'numeric',
+                            month: 'long',
+                            year: 'numeric',
+                        });
+
+                        const handleDotsClick = () => {
+                            const locked = !!summary?.is_locked;
+                            const rowState: RowState = locked
+                                ? 'LOCKED'
+                                : hasEntries
+                                    ? 'FILLED'
+                                    : 'EMPTY';
+                            setActionSheet({
+                                open: true,
+                                date: dayLabel,
+                                rowState,
+                                existingEntry: hasEntries ? { ...lastEntry, _yyyymmdd: dayDate, _label: dayLabel } : { _yyyymmdd: dayDate, _label: dayLabel },
+                            });
+                        };
+
                         return (
                             <div
                                 key={day}
                                 style={{
                                     display: 'grid',
-                                    gridTemplateColumns: '40px 1fr 60px 60px',
+                                    gridTemplateColumns: isOwner ? '40px 1fr 56px 56px 44px' : '40px 1fr 60px 60px',
                                     padding: '10px 14px',
                                     borderBottom: '1px solid var(--border-subtle)',
                                     alignItems: 'center',
@@ -501,6 +551,9 @@ export default function CustomerDetail() {
                                         color: hasEntries ? 'var(--text-primary)' : 'var(--text-muted)',
                                         fontWeight: hasEntries ? 500 : 400,
                                         fontFamily: hasEntries ? 'var(--font-mono)' : 'var(--font-body)',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap',
                                     }}
                                 >
                                     {hasEntries ? detailsStr : '—'}
@@ -533,6 +586,37 @@ export default function CustomerDetail() {
                                           })
                                         : '—'}
                                 </div>
+                                {isOwner && (
+                                    <button
+                                        onClick={handleDotsClick}
+                                        aria-label={`Actions for ${dayLabel}`}
+                                        style={{
+                                            width: 36,
+                                            height: 36,
+                                            minHeight: 36,
+                                            padding: 0,
+                                            background: 'transparent',
+                                            border: 'none',
+                                            borderRadius: 'var(--radius-sm)',
+                                            color: 'var(--text-muted)',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            justifySelf: 'end',
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-overlay)';
+                                            (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-primary)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
+                                            (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)';
+                                        }}
+                                    >
+                                        <MoreVertical size={18} strokeWidth={2} />
+                                    </button>
+                                )}
                             </div>
                         );
                     })}
@@ -640,6 +724,85 @@ export default function CustomerDetail() {
                         </form>
                     </div>
                 </div>
+            )}
+
+            {/* OWNER-only entry CRUD: action sheet -> form/delete */}
+            {isOwner && (
+                <>
+                    <EntryActionSheet
+                        isOpen={actionSheet.open}
+                        onClose={() => setActionSheet((s) => ({ ...s, open: false }))}
+                        date={actionSheet.date}
+                        rowState={actionSheet.rowState}
+                        existingEntry={
+                            actionSheet.existingEntry && actionSheet.existingEntry.id
+                                ? {
+                                      id: actionSheet.existingEntry.id,
+                                      product_name: actionSheet.existingEntry.product?.name || 'Item',
+                                      quantity: Number(actionSheet.existingEntry.quantity),
+                                      unit: actionSheet.existingEntry.product?.unit || '',
+                                      line_total: Number(actionSheet.existingEntry.line_total || 0),
+                                  }
+                                : undefined
+                        }
+                        onAdd={() => {
+                            setFormModal({
+                                open: true,
+                                mode: 'add',
+                                date: actionSheet.existingEntry?._yyyymmdd ?? '',
+                                existingEntry: null,
+                            });
+                        }}
+                        onEdit={() => {
+                            const e = actionSheet.existingEntry;
+                            if (!e?.id) return;
+                            setFormModal({
+                                open: true,
+                                mode: 'edit',
+                                date: e._yyyymmdd,
+                                existingEntry: {
+                                    id: e.id,
+                                    product_id: e.product_id,
+                                    quantity: Number(e.quantity),
+                                },
+                            });
+                        }}
+                        onDelete={() => {
+                            const e = actionSheet.existingEntry;
+                            if (!e?.id) return;
+                            setDeleteModal({
+                                open: true,
+                                entry: {
+                                    id: e.id,
+                                    date: e._yyyymmdd,
+                                    product_name: e.product?.name || 'Item',
+                                    quantity: Number(e.quantity),
+                                    unit: e.product?.unit || '',
+                                    line_total: Number(e.line_total || 0),
+                                },
+                            });
+                        }}
+                        onGoToSummary={() => navigate('/summary')}
+                    />
+
+                    <EntryFormModal
+                        isOpen={formModal.open}
+                        onClose={() => setFormModal((s) => ({ ...s, open: false }))}
+                        mode={formModal.mode}
+                        customerId={id!}
+                        customerName={customer?.name ?? ''}
+                        date={formModal.date}
+                        existingEntry={formModal.existingEntry ?? undefined}
+                        onSuccess={() => loadData()}
+                    />
+
+                    <DeleteEntryConfirm
+                        isOpen={deleteModal.open}
+                        onClose={() => setDeleteModal({ open: false, entry: null })}
+                        entry={deleteModal.entry}
+                        onSuccess={() => loadData()}
+                    />
+                </>
             )}
         </div>
     );
